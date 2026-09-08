@@ -45,10 +45,10 @@ type VerificationDependencies = {
   now?: Date;
   requestOrigin: string | null;
   findSource: (slug: string) => Promise<RegisteredLaunchSource | undefined>;
-  consumeNonce: (sourceSlug: string, nonce: string, expiresAt: Date) => Promise<boolean>;
+  consumeLaunch: (sourceSlug: string, launch: VerifiedLaunchDraft) => Promise<string | null>;
 };
 
-export type VerifiedLaunch = {
+export type VerifiedLaunchDraft = {
   sourceApp: string;
   environment: "development" | "canary" | "production";
   location: string;
@@ -57,8 +57,12 @@ export type VerifiedLaunch = {
   sourceRevision?: string;
   returnUrl?: string;
   nonce: string;
+  issuedAt: Date;
+  expiresAt: Date;
   tokenFingerprint: string;
 };
+
+export type VerifiedLaunch = VerifiedLaunchDraft & { launchSessionId: string };
 
 export async function verifySourceLaunch(token: string, dependencies: VerificationDependencies): Promise<VerifiedLaunch> {
   if (token.length < 40 || token.length > 8192) throw new Error("Launch assertion length is invalid");
@@ -101,9 +105,7 @@ export async function verifySourceLaunch(token: string, dependencies: Verificati
       throw new Error("Launch return URL is not allowed");
     }
   }
-  const consumed = await dependencies.consumeNonce(source.slug, claims.jti, new Date(claims.exp * 1_000));
-  if (!consumed) throw new Error("Launch replay detected");
-  return {
+  const draft: VerifiedLaunchDraft = {
     sourceApp: source.slug,
     environment: claims.environment,
     location: claims.context.location,
@@ -112,6 +114,11 @@ export async function verifySourceLaunch(token: string, dependencies: Verificati
     ...(claims.context.source_revision ? { sourceRevision: claims.context.source_revision } : {}),
     ...(returnUrl ? { returnUrl } : {}),
     nonce: claims.jti,
+    issuedAt: new Date(claims.iat * 1_000),
+    expiresAt: new Date(claims.exp * 1_000),
     tokenFingerprint: createHash("sha256").update(token).digest("hex"),
   };
+  const launchSessionId = await dependencies.consumeLaunch(source.slug, draft);
+  if (!launchSessionId) throw new Error("Launch replay detected");
+  return { ...draft, launchSessionId };
 }

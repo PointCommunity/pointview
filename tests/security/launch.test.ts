@@ -32,10 +32,10 @@ describe("source launch verification", () => {
       now,
       requestOrigin: "https://guide.pointatx.org",
       findSource: async () => source,
-      consumeNonce: async (_source, nonce) => {
-        if (used.has(nonce)) return false;
-        used.add(nonce);
-        return true;
+      consumeLaunch: async (_source, launch) => {
+        if (used.has(launch.nonce)) return null;
+        used.add(launch.nonce);
+        return "018f4f6d-7c00-7000-8000-000000000051";
       },
     });
     expect(verified).toMatchObject({ sourceApp: "pointguide", location: "/m32", screenName: "M32" });
@@ -44,7 +44,7 @@ describe("source launch verification", () => {
         now,
         requestOrigin: "https://guide.pointatx.org",
         findSource: async () => source,
-        consumeNonce: async (_source, nonce) => !used.has(nonce),
+        consumeLaunch: async (_source, launch) => used.has(launch.nonce) ? null : "session",
       }),
     ).rejects.toThrow(/replay/i);
   });
@@ -70,9 +70,9 @@ describe("source launch verification", () => {
           returnUrlPrefixes: ["https://fixture.test/"],
           keys: [{ kid: "key-1", publicJwk: await exportJWK(publicKey), notBefore: new Date(0), notAfter: new Date("2999-01-01"), revokedAt: null }],
         }),
-        consumeNonce: async () => {
+        consumeLaunch: async () => {
           consumed = true;
-          return true;
+          return "session";
         },
       }),
     ).rejects.toThrow(/origin/i);

@@ -17,7 +17,9 @@ describe("Problem Details", () => {
   });
 
   it("accepts only bounded incoming correlation IDs", () => {
-    expect(withCorrelationId(new Headers({ "x-correlation-id": "request_123" }))).toBe("request_123");
+    const expected = "018f4f6d-7c00-7000-8000-000000000071";
+    expect(withCorrelationId(new Headers({ "x-correlation-id": expected }))).toBe(expected);
+    expect(withCorrelationId(new Headers({ "x-correlation-id": "request_123" }))).toMatch(/^[0-9a-f-]{36}$/);
     expect(withCorrelationId(new Headers({ "x-correlation-id": "../../secret" }))).toMatch(/^[0-9a-f-]{36}$/);
   });
 });

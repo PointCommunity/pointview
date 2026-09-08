@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { verifyAccessAssertion } from "@/server/auth/access";
 import { validateAccountTransition } from "@/server/auth/policy";
 import { createSession, readSession } from "@/server/auth/session";
+import { createLaunchCookieValue, readLaunchCookieValue } from "@/server/launch/cookie";
 
 describe("Cloudflare Access boundary", () => {
   it("verifies issuer, audience, expiry, and required identity claims", async () => {
@@ -42,6 +43,19 @@ describe("PointView sessions", () => {
     );
     await expect(readSession(value, secret, new Date("2026-09-07T12:04:59Z"))).resolves.toMatchObject({ role: "OWNER" });
     await expect(readSession(value, secret, new Date("2026-09-07T12:05:01Z"))).rejects.toThrow();
+  });
+
+  it("binds an encrypted launch cookie to its account for thirty minutes", async () => {
+    const now = new Date("2026-09-07T12:00:00Z");
+    const value = await createLaunchCookieValue({
+      accountId: "018f4f6d-7c00-7000-8000-000000000061",
+      launchSessionId: "018f4f6d-7c00-7000-8000-000000000062",
+    }, "s".repeat(32), now);
+    await expect(readLaunchCookieValue(value, "s".repeat(32), new Date("2026-09-07T12:29:59Z"))).resolves.toMatchObject({
+      accountId: "018f4f6d-7c00-7000-8000-000000000061",
+      launchSessionId: "018f4f6d-7c00-7000-8000-000000000062",
+    });
+    await expect(readLaunchCookieValue(value, "s".repeat(32), new Date("2026-09-07T12:30:01Z"))).rejects.toThrow();
   });
 });
 

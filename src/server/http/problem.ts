@@ -7,7 +7,7 @@ type ProblemInput = {
   detail?: string;
 };
 
-const safeCorrelationId = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,95}$/;
+const safeCorrelationId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function withCorrelationId(headers: Headers): string {
   const candidate = headers.get("x-correlation-id");
@@ -35,4 +35,3 @@ export function problem(input: ProblemInput, correlationId: string): Response {
     },
   );
 }
-
