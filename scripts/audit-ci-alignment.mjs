@@ -3,8 +3,8 @@
 import fs from "node:fs";
 
 const checks = [
-  [".github/workflows/quality.yml", ["name: Quality", "verify:", "postgres:", "browser:", "npm ci", "npm run check", "npm run security:check", "npm run test:integration", "npm run test:e2e"]],
-  [".github/workflows/container.yml", ["name: Container", "amd64:", "linux/amd64", "pointview:ci", "sbom.spdx.json", "severity: HIGH,CRITICAL"]],
+  [".github/workflows/quality.yml", ["name: Quality", "CANDIDATE_SHA:", "ref: ${{ env.CANDIDATE_SHA }}", "verify:", "postgres:", "browser:", "npm ci", "npm run check", "npm run security:check", "npm run test:integration", "npm run test:e2e"]],
+  [".github/workflows/container.yml", ["name: Container", "CANDIDATE_SHA:", "ref: ${{ env.CANDIDATE_SHA }}", "amd64:", "linux/amd64", "pointview:ci", "sbom.spdx.json", "severity: HIGH,CRITICAL"]],
 ];
 const errors = [];
 
