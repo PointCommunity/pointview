@@ -45,6 +45,16 @@ describe("POST /bootstrap", () => {
     expect(mocks.findOrCreate).toHaveBeenCalledOnce();
   });
 
+  it("accepts an Access-authenticated client that omits the optional Origin header", async () => {
+    const response = await POST(new NextRequest("https://view.pointatx.org/bootstrap", {
+      method: "POST",
+      headers: { "cf-access-jwt-assertion": "access-token" },
+    }));
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("https://view.pointatx.org/admin/source-apps");
+  });
+
   it("rejects cross-origin bootstrap and non-Owner accounts without setting a session", async () => {
     const crossOrigin = await POST(new NextRequest("https://view.pointatx.org/bootstrap", {
       method: "POST",
