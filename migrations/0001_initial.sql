@@ -356,6 +356,7 @@ create table if not exists github_operations (
   github_node_id text,
   github_issue_number integer,
   readback_digest text,
+  readback_payload jsonb,
   readback_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),

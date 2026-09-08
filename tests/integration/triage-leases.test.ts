@@ -8,6 +8,8 @@ class MemoryQueue implements DrainQueue {
   readonly needsAttention: string[] = [];
   started = false;
   finishedWith: string | null = null;
+  heartbeatEveryMs?: number;
+  heartbeat?: (leaseId: string) => Promise<boolean>;
 
   constructor(records: string[]) {
     this.records = [...records];
@@ -74,5 +76,27 @@ describe("daily sequential drain", () => {
     expect(overlap.stopReason).toBe("ALREADY_RUNNING");
     release();
     await running;
+  });
+
+  it("honors a bounded Retry-After and resumes the oldest record", async () => {
+    const queue = new MemoryQueue(["one"]);
+    const waits: number[] = [];
+    let calls = 0;
+    const result = await drainQueue(queue, async () => {
+      calls += 1;
+      if (calls === 1) throw new IntegrationFailure("GITHUB_RATE_LIMIT", 7);
+    }, { sleep: async (milliseconds) => { waits.push(milliseconds); } });
+    expect(result).toMatchObject({ completed: 1, stopReason: "QUEUE_EMPTY" });
+    expect(waits).toEqual([7_000]);
+    expect(calls).toBe(2);
+  });
+
+  it("heartbeats while a record is being processed", async () => {
+    const queue = new MemoryQueue(["one"]);
+    let heartbeats = 0;
+    queue.heartbeatEveryMs = 1;
+    queue.heartbeat = async () => { heartbeats += 1; return true; };
+    await drainQueue(queue, async () => new Promise((resolve) => setTimeout(resolve, 8)));
+    expect(heartbeats).toBeGreaterThan(0);
   });
 });

@@ -17,7 +17,7 @@ const researchFinding = z.object({
   source_urls: z.array(z.url().refine((value) => value.startsWith("https://"))).max(20),
 }).strict();
 
-const mergeMutation = z.object({
+export const mergeMutationSchema = z.object({
   kind: z.literal("MERGE_COMMENT"),
   issue_node_id: bounded(200).min(8),
   user_evidence_summary: bounded(2000),
@@ -25,7 +25,7 @@ const mergeMutation = z.object({
   scope_impact: bounded(2000),
 }).strict();
 
-const createMutation = z.object({
+export const createMutationSchema = z.object({
   kind: z.literal("CREATE_ISSUE"),
   title: bounded(200),
   summary: bounded(3000),
@@ -42,7 +42,7 @@ const createMutation = z.object({
   effort: z.enum(["XS", "S", "M", "L", "XL"]),
 }).strict();
 
-const consideredMutation = z.object({
+export const consideredMutationSchema = z.object({
   kind: z.literal("NO_GITHUB_CHANGE"),
   revisit_condition: z.string().max(1000).nullable(),
 }).strict();
@@ -62,7 +62,7 @@ export const triageDecisionSchema = z.object({
     rationale: bounded(4000),
     evidence_ids: z.array(evidenceId).min(1).max(40),
     risk_flags: z.array(riskFlag),
-    mutation: z.discriminatedUnion("kind", [mergeMutation, createMutation, consideredMutation]),
+    mutation: z.discriminatedUnion("kind", [mergeMutationSchema, createMutationSchema, consideredMutationSchema]),
   }).strict()).min(1).max(8),
 }).strict();
 

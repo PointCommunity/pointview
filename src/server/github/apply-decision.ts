@@ -1,3 +1,5 @@
+import { assertMergePreconditions, assertProjectPreconditions, type ProjectMutationExpectation, type ProjectMutationReadback } from "./preconditions";
+
 export type GitHubIssueReadback = {
   nodeId: string;
   number: number;
@@ -11,11 +13,13 @@ export type GitHubIssueReadback = {
   priority: string | null;
   impact: string | null;
   effort: string | null;
+  repository: string;
 };
 
 type Comment = { id: string; issueNodeId: string; body: string };
 
 export interface GitHubMutationPort {
+  readMutationPreconditions(): Promise<ProjectMutationReadback>;
   findIssueByMarker(marker: string): Promise<GitHubIssueReadback | null>;
   createIssue(input: { title: string; body: string }): Promise<GitHubIssueReadback>;
   setLabels(number: number, labels: string[]): Promise<void>;
@@ -28,7 +32,7 @@ export interface GitHubMutationPort {
   readComment(id: string): Promise<Comment | null>;
 }
 
-type OperationRecord = {
+export type OperationRecord = {
   key: string;
   state: "PENDING" | "CONFIRMED";
   githubIssueNumber?: number;
@@ -67,6 +71,8 @@ export async function applyCreate(
     body: string;
     labels: string[];
     fields: { status: "Backlog"; priority: string; impact: string; effort: string };
+    expectedRepository: string;
+    expectedProject: { nodeId: string; number: number };
   },
   github: GitHubMutationPort,
   ledger: OperationLedger,
@@ -76,13 +82,29 @@ export async function applyCreate(
   if (recorded?.state === "CONFIRMED") return recorded.readback as GitHubIssueReadback;
   const operationMarker = marker(input.operationId);
   if (!input.body.includes(operationMarker)) throw new Error("Created Issue body is missing its operation marker");
+  const expectation: ProjectMutationExpectation = {
+    expectedRepository: input.expectedRepository,
+    expectedProject: input.expectedProject,
+    requiredLabels: input.labels,
+    requiredFields: input.fields,
+  };
 
   let issue = recorded?.githubIssueNumber ? await github.readIssue(recorded.githubIssueNumber) : await github.findIssueByMarker(operationMarker);
-  if (!issue) issue = await github.createIssue({ title: input.title, body: input.body });
+  if (!issue) {
+    assertProjectPreconditions(expectation, await github.readMutationPreconditions());
+    await ledger.put({ key, state: "PENDING" });
+    issue = await github.createIssue({ title: input.title, body: input.body });
+  }
   await ledger.put({ key, state: "PENDING", githubIssueNumber: issue.number });
+  assertProjectPreconditions(expectation, await github.readMutationPreconditions());
   await github.setLabels(issue.number, input.labels);
   const refreshed = await github.readIssue(issue.number);
-  const itemId = refreshed.projectItemId ?? await github.addToProject(issue.number);
+  let itemId = refreshed.projectItemId;
+  if (!itemId) {
+    assertProjectPreconditions(expectation, await github.readMutationPreconditions());
+    itemId = await github.addToProject(issue.number);
+  }
+  assertProjectPreconditions(expectation, await github.readMutationPreconditions());
   await github.setProjectFields(itemId, input.fields);
   const readback = await github.readIssue(issue.number);
   if (
@@ -103,7 +125,7 @@ export async function applyCreate(
 }
 
 export async function applyMerge(
-  input: { decisionId: string; operationId: string; targetIssueNodeId: string; body: string },
+  input: { decisionId: string; operationId: string; targetIssueNodeId: string; expectedRepository: string; body: string },
   github: GitHubMutationPort,
   ledger: OperationLedger,
 ): Promise<Comment> {
@@ -111,16 +133,18 @@ export async function applyMerge(
   const recorded = await ledger.get(key);
   if (recorded?.state === "CONFIRMED") return recorded.readback as Comment;
   const target = await github.readIssueByNodeId(input.targetIssueNodeId);
-  if (!target || target.state !== "OPEN" || target.status === "Done") {
-    throw new Error("Merge target is no longer an eligible non-Done Issue");
-  }
+  assertMergePreconditions(input.expectedRepository, target);
   const operationMarker = marker(input.operationId);
   if (!input.body.includes(operationMarker)) throw new Error("Merge comment is missing its operation marker");
-  let comment = recorded?.githubCommentId ? await github.readComment(recorded.githubCommentId) : await github.findCommentByMarker(target.nodeId, operationMarker);
-  if (!comment) comment = await github.createComment(target.nodeId, input.body);
+  let comment = recorded?.githubCommentId ? await github.readComment(recorded.githubCommentId) : await github.findCommentByMarker(target!.nodeId, operationMarker);
+  if (!comment) {
+    assertMergePreconditions(input.expectedRepository, await github.readIssueByNodeId(input.targetIssueNodeId));
+    await ledger.put({ key, state: "PENDING" });
+    comment = await github.createComment(target!.nodeId, input.body);
+  }
   await ledger.put({ key, state: "PENDING", githubCommentId: comment.id });
   const readback = await github.readComment(comment.id);
-  if (!readback || readback.issueNodeId !== target.nodeId || readback.body !== input.body) {
+  if (!readback || readback.issueNodeId !== target!.nodeId || readback.body !== input.body) {
     throw new Error("Merge comment readback does not match the authorized mutation");
   }
   await ledger.put({ key, state: "CONFIRMED", githubCommentId: comment.id, readback });

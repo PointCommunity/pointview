@@ -5,13 +5,17 @@ import { newId } from "@/server/db/ids";
 import type { DrainQueue, Lease } from "./batch";
 
 export class PostgresDrainQueue implements DrainQueue {
+  readonly heartbeatEveryMs: number;
+
   constructor(
     readonly sql: postgres.Sql,
     readonly runnerIdentity: string,
     readonly settingsVersion = 1,
     readonly leaseSeconds = 300,
     readonly maxAttempts = 3,
-  ) {}
+  ) {
+    this.heartbeatEveryMs = Math.max(1_000, Math.floor(this.leaseSeconds * 1_000 / 3));
+  }
 
   async #recoverExpired() {
     await this.sql.begin(async (tx) => {
@@ -129,4 +133,3 @@ export class PostgresDrainQueue implements DrainQueue {
     return settings?.paused ?? false;
   }
 }
-

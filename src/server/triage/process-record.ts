@@ -31,6 +31,7 @@ export type PersistedOutcome = {
   unitId: string;
   decisionId: string;
   disposition: "MERGED" | "CREATED" | "CONSIDERED";
+  reasonCode: string;
   mutation: unknown;
   governedMetadata: unknown;
 };
@@ -59,6 +60,7 @@ async function existingOutcomes(sql: postgres.Sql, recordId: string): Promise<{ 
   `;
   const outcomes = await sql<PersistedOutcome[]>`
     select ${recordId}::text as "recordId", fu.id as "unitId", td.id as "decisionId", td.disposition,
+      td.reason_code as "reasonCode",
       td.proposed_payload as mutation, td.governed_metadata as "governedMetadata"
     from feedback_units fu join triage_decisions td on td.unit_id = fu.id and td.active
     where fu.feedback_record_id = ${recordId} and fu.state = 'APPLYING' and td.state in ('PRECONDITIONS_VALID', 'APPLYING', 'READBACK_CONFIRMED')
@@ -145,7 +147,7 @@ async function persistPlan(
           ${tx.json(reviewRunId ? [reviewRunId] : [])}, ${result.status === "READY" ? "PRECONDITIONS_VALID" : "INVALID"}
         )
       `;
-      if (result.status === "READY") outcomes.push({ recordId, unitId, decisionId, disposition: unit.disposition, mutation: unit.mutation, governedMetadata });
+      if (result.status === "READY") outcomes.push({ recordId, unitId, decisionId, disposition: unit.disposition, reasonCode: unit.reason_code, mutation: unit.mutation, governedMetadata });
       await persistWebSources(tx, { unitId, sources: result.webSources });
     }
     await tx`update feedback_records set state = ${result.status === "READY" ? "APPLYING" : "NEEDS_ATTENTION"} where id = ${recordId}`;

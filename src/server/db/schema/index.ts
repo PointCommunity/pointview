@@ -334,6 +334,7 @@ export const githubOperations = pgTable("github_operations", {
   githubNodeId: text("github_node_id"),
   githubIssueNumber: integer("github_issue_number"),
   readbackDigest: text("readback_digest"),
+  readbackPayload: jsonb("readback_payload"),
   readbackAt: time("readback_at"),
   createdAt: time("created_at").notNull().defaultNow(),
   updatedAt: time("updated_at").notNull().defaultNow(),

@@ -86,7 +86,7 @@ export class GitHubAppClient {
         ...init.headers,
       },
     });
-    if (response.status === 429 || (response.status === 403 && response.headers.get("x-ratelimit-remaining") === "0")) {
+    if (response.status === 429 || (response.status === 403 && (response.headers.has("retry-after") || response.headers.get("x-ratelimit-remaining") === "0"))) {
       const retryHeader = Number(response.headers.get("retry-after"));
       const reset = Number(response.headers.get("x-ratelimit-reset"));
       const seconds = Number.isFinite(retryHeader) && retryHeader > 0
@@ -161,5 +161,17 @@ export class GitHubAppClient {
       }),
     });
     return response.json();
+  }
+
+  async graphqlJson<T = unknown>(query: string, variables: Record<string, unknown>): Promise<T> {
+    if (!query.startsWith("query PointView") && !query.startsWith("mutation PointView")) {
+      throw new Error("GitHub GraphQL operation must use the PointView operation prefix");
+    }
+    const response = await this.#authorizedFetch(new URL("https://api.github.com/graphql"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query, variables }),
+    });
+    return response.json() as Promise<T>;
   }
 }
