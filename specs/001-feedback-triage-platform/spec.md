@@ -117,7 +117,7 @@ PointView changes follow the same governed Issue-to-Canary-to-Production path as
 ### Functional Requirements
 
 - **FR-001**: PointView MUST authenticate through Cloudflare Access and authorize through its own database.
-- **FR-002**: The first valid identity MUST become the approved Owner transactionally; later identities MUST begin Pending. A same-origin Owner-administration POST protected by a valid Cloudflare Access assertion MUST provide the initial Owner session without requiring a source app to exist first; it MUST NOT create a session for non-Owners.
+- **FR-002**: The first valid identity MUST become the approved Owner transactionally; later identities MUST begin Pending. An Owner-administration POST protected by a valid Cloudflare Access assertion MUST provide the initial Owner session without requiring a source app to exist first; it MUST NOT create a session for non-Owners.
 - **FR-003**: Approved Users MUST be able to submit feedback and view only their own submissions; Admins MUST be able to review operational records and manage non-Owner accounts; Owners MUST exclusively manage integration mappings and external secret references, model/prompt policy, source apps, triage pause, retention, and Owner membership. The daily CronJob schedule MUST remain deployment-controlled and MUST NOT give the web application cluster mutation credentials.
 - **FR-004**: The final active Owner MUST NOT be demoted or suspended.
 - **FR-005**: PointView MUST exclude PointGuide knowledge repositories, corpus indexing, evidence Q&A, training sessions, and learning-proposal functionality.

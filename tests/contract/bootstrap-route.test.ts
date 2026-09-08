@@ -55,12 +55,9 @@ describe("POST /bootstrap", () => {
     expect(response.headers.get("location")).toBe("https://view.pointatx.org/admin/source-apps");
   });
 
-  it("rejects cross-origin bootstrap and non-Owner accounts without setting a session", async () => {
-    const crossOrigin = await POST(new NextRequest("https://view.pointatx.org/bootstrap", {
-      method: "POST",
-      headers: { origin: "https://attacker.example", "cf-access-jwt-assertion": "access-token" },
-    }));
-    expect(crossOrigin.status).toBe(403);
+  it("rejects missing Access authentication and non-Owner accounts without setting a session", async () => {
+    const unauthenticated = await POST(new NextRequest("https://view.pointatx.org/bootstrap", { method: "POST" }));
+    expect(unauthenticated.status).toBe(401);
     expect(mocks.findOrCreate).not.toHaveBeenCalled();
 
     mocks.findOrCreate.mockResolvedValueOnce({ ...mocks.account, role: "USER", status: "PENDING" });

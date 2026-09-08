@@ -11,10 +11,6 @@ import { problem, withCorrelationId } from "@/server/http/problem";
 export async function POST(request: NextRequest) {
   const correlationId = withCorrelationId(request.headers);
   const config = serverConfig();
-  const origin = request.headers.get("origin");
-  if (origin && origin !== config.baseUrl.origin) {
-    return problem({ status: 403, title: "Owner sign-in origin is not allowed", code: "BOOTSTRAP_ORIGIN_INVALID" }, correlationId);
-  }
   const accessAssertion = request.headers.get("cf-access-jwt-assertion");
   if (!accessAssertion) {
     return problem({ status: 401, title: "Cloudflare Access authentication is required", code: "ACCESS_ASSERTION_MISSING" }, correlationId);
