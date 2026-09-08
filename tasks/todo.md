@@ -2,7 +2,7 @@
 
 The authoritative, acceptance-criteria-bearing checklist is [`specs/001-feedback-triage-platform/tasks.md`](../specs/001-feedback-triage-platform/tasks.md). Update task state there; this index prevents two divergent checklists.
 
-- [ ] T001–T005: Governed repository and Project bootstrap
+- [x] T001–T005: Governed repository and Project bootstrap
 - [ ] T006–T012: Foundational application skeleton
 - [ ] T013–T020: Trusted contextual feedback
 - [ ] T021–T029: Daily sequential research and decisions

@@ -36,4 +36,4 @@ The authoritative implementation plan is [`specs/001-feedback-triage-platform/pl
 
 ## Open questions
 
-None. Operator-tunable defaults do not alter the approved product behavior. Implementation waits for human approval of the plan and exact bootstrap Issue draft.
+The plan and exact bootstrap Issue were approved on 2026-09-07. GitHub's current plan rejects server-enforced private-repository rulesets and legacy branch protection with HTTP 403; deterministic repository audits and required CI checks are the recorded compensating controls until the hosting plan supports that gate.

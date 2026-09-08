@@ -7,8 +7,48 @@
     "node": ">=22"
   },
   "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "security:check": "npm run test:security && npm audit --omit=dev --audit-level=high",
+    "test:security": "vitest run tests/security",
     "skills:check": "node .agents/skills/pointview-maintain-skills/scripts/audit-alignment.mjs",
     "project:check": "node .agents/skills/pointview-pipeline-health/scripts/audit-project.mjs",
-    "check": "npm run skills:check && npm run project:check"
+    "ci:check": "node scripts/audit-ci-alignment.mjs",
+    "check": "npm run lint && npm run typecheck && npm test && npm run build && npm run skills:check && npm run ci:check"
+  },
+  "dependencies": {
+    "@prometheus-io/client": "0.16.1",
+    "drizzle-orm": "0.45.2",
+    "jose": "6.2.12",
+    "next": "16.3.4",
+    "openai": "7.10.0",
+    "pino": "10.3.1",
+    "postgres": "3.4.9",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "server-only": "0.0.1",
+    "sharp": "0.35.4",
+    "uuid": "14.0.2",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.63.0",
+    "@types/node": "26.5.0",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "@vitest/coverage-v8": "5.0.0",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.4",
+    "happy-dom": "20.14.0",
+    "tsx": "4.23.13",
+    "typescript": "5.9.3",
+    "vitest": "5.0.0"
   }
 }

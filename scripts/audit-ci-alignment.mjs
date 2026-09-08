@@ -3,7 +3,7 @@
 import fs from "node:fs";
 
 const checks = [
-  [".github/workflows/quality.yml", ["name: Quality", "verify:", "npm run skills:check"]],
+  [".github/workflows/quality.yml", ["name: Quality", "verify:", "npm ci", "npm run check"]],
   [".github/workflows/container.yml", ["name: Container", "amd64:", "linux/amd64"]],
 ];
 const errors = [];
@@ -26,4 +26,3 @@ if (errors.length) {
 }
 
 console.log("PointView CI alignment OK: Quality / verify and Container / amd64 are declared.");
-
