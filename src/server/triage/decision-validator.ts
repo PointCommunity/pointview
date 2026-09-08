@@ -1,7 +1,7 @@
 import { triageDecisionSchema, type TriageDecision } from "./decision-schema";
 import { normalizeWebSourceUrl } from "./model/web-sources";
 
-type Context = {
+export type DecisionValidationContext = {
   evidenceIds: Set<string>;
   eligibleIssues: Map<string, { status: string }>;
   allowedAreaLabels: Set<string>;
@@ -18,7 +18,7 @@ function textValues(value: unknown): string[] {
   return [];
 }
 
-export function validateTriageDecision(value: unknown, context: Context): TriageDecision {
+export function validateTriageDecision(value: unknown, context: DecisionValidationContext): TriageDecision {
   const decision = triageDecisionSchema.parse(value);
   const unsafe = textValues(decision).find((text) => unsafeInstruction.test(text) || personalEmail.test(text));
   if (unsafe) throw new Error("Decision contains unsafe or privacy-sensitive content");

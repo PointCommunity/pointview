@@ -13,7 +13,7 @@ function canonical(value: unknown): string {
 }
 
 export async function persistWebSources(
-  sql: postgres.Sql,
+  sql: postgres.Sql | postgres.TransactionSql,
   input: { unitId: string; sources: WebSource[]; capturedAt?: Date },
 ): Promise<void> {
   const capturedAt = input.capturedAt ?? new Date();

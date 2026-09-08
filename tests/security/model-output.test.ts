@@ -78,4 +78,12 @@ describe("model decision boundary", () => {
     expect(() => validateTriageDecision(decision, context)).toThrow(/uncaptured web source/i);
     expect(() => validateTriageDecision(decision, { ...context, webSourceUrls: new Set(["https://attacker.test/unsupported"]) })).not.toThrow();
   });
+
+  it("requires explicit split lineage and mixed-feedback review flags", () => {
+    const mixed = {
+      ...mergeDecision,
+      units: [mergeDecision.units[0], { ...mergeDecision.units[0], unit_key: "unit-2" }],
+    };
+    expect(() => validateTriageDecision(mixed, context)).toThrow(/split lineage/i);
+  });
 });
