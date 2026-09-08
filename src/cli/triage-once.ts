@@ -2,9 +2,8 @@ import os from "node:os";
 
 import OpenAI from "openai";
 
-import { serverConfig } from "@/server/config";
+import { cliConfig, cliSql } from "@/cli/runtime";
 import { readRuntimeProfile } from "@/server/config/settings";
-import { sqlClient } from "@/server/db/client";
 import { GitHubAppClient } from "@/server/github/client";
 import { GitHubMutationAdapter } from "@/server/github/mutation-port";
 import { GitHubOutcomeApplier } from "@/server/github/outcome-applier";
@@ -15,9 +14,15 @@ import { DecisionOrchestrator } from "@/server/triage/orchestrator";
 import { PostgresDrainQueue } from "@/server/triage/postgres-queue";
 import { processRecord } from "@/server/triage/process-record";
 
-const config = serverConfig();
-const sql = sqlClient();
-try {
+async function main() {
+  const config = cliConfig();
+  if (!config.triageWritesEnabled) {
+    process.stdout.write(`${JSON.stringify({ event: "triage.disabled", code: "TRIAGE_WRITES_DISABLED" })}\n`);
+    return;
+  }
+
+  const sql = cliSql(config.databaseUrl);
+  try {
   const profile = await readRuntimeProfile(sql);
   if (profile.provider !== "OPENAI") throw new Error("Configured model provider is unsupported");
   const numberLimit = (name: string, fallback: number) => {
@@ -68,9 +73,12 @@ try {
   }));
   process.stdout.write(`${JSON.stringify({ event: "triage.completed", ...result })}\n`);
   if (!["QUEUE_EMPTY", "ALREADY_RUNNING", "OWNER_PAUSED"].includes(result.stopReason)) process.exitCode = 1;
-} catch {
-  process.stderr.write(`${JSON.stringify({ event: "triage.failed", code: "TRIAGE_JOB_FAILED" })}\n`);
-  process.exitCode = 1;
-} finally {
-  await sql.end({ timeout: 5 });
+  } catch {
+    process.stderr.write(`${JSON.stringify({ event: "triage.failed", code: "TRIAGE_JOB_FAILED" })}\n`);
+    process.exitCode = 1;
+  } finally {
+    await sql.end({ timeout: 5 });
+  }
 }
+
+await main();

@@ -150,6 +150,9 @@ for (const relativePath of [
   ".agents/skills/pointview-release-canary/scripts/check-candidate.mjs",
   ".agents/skills/pointview-release-canary/scripts/check-chart-version.mjs",
   ".agents/skills/pointview-release-canary/scripts/verify-live.mjs",
+  "scripts/verify-live.mjs",
+  "scripts/verify-live-contract.mjs",
+  "scripts/verify-live-fixture.mjs",
   ".agents/skills/pointview-pipeline-health/scripts/audit-project.mjs",
 ]) {
   read(relativePath);

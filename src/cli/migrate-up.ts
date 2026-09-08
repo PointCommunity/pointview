@@ -1,7 +1,7 @@
-import { sqlClient } from "@/server/db/client";
+import { cliConfig, cliSql } from "@/cli/runtime";
 import { migrateUp } from "@/server/db/migrations";
 
-const sql = sqlClient();
+const sql = cliSql(cliConfig().databaseUrl);
 try {
   await migrateUp(sql);
   process.stdout.write(`${JSON.stringify({ event: "migration.completed", migration: "0001_initial" })}\n`);

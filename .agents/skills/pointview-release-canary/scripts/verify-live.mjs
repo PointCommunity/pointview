@@ -2,6 +2,8 @@
 
 import { execFileSync } from "node:child_process";
 
+import { assertRuntimeContract, assertStorageContract } from "../../../../scripts/verify-live-contract.mjs";
+
 const [, , track, sourceSha, imageDigest, homelabSha] = process.argv;
 if (!track || !sourceSha || !imageDigest || !homelabSha || process.argv.length !== 6) {
   console.error("usage: verify-live.mjs <canary|production> <full-source-sha> <sha256-digest> <full-homelab-sha>");
@@ -18,6 +20,8 @@ if (!/^[0-9a-f]{40}$/.test(sourceSha) || !/^sha256:[0-9a-f]{64}$/.test(imageDige
 
 const appName = track === "canary" ? "pointview-canary" : "pointview";
 const namespace = appName;
+const otherNamespace = track === "canary" ? "pointview" : "pointview-canary";
+const publicUrl = track === "canary" ? "https://pointview-canary.eaglepass.io" : "https://pointview.eaglepass.io";
 const expectedImageSuffix = `@${imageDigest}`;
 const run = (args) => execFileSync("kubectl", args, {
   encoding: "utf8",
@@ -25,6 +29,9 @@ const run = (args) => execFileSync("kubectl", args, {
   stdio: ["ignore", "pipe", "pipe"],
 }).trim();
 const json = (args) => JSON.parse(run(args));
+const jsonOptional = (args, fallback) => {
+  try { return json(args); } catch { return fallback; }
+};
 
 function assertReadyContainer(container, label) {
   if (!container?.ready || container.restartCount !== 0 || !container.imageID?.endsWith(expectedImageSuffix)) {
@@ -61,20 +68,10 @@ try {
 
   const runtimeSource = run(["exec", "-n", namespace, webPod.metadata.name, "-c", "web", "--", "printenv", "SOURCE_REVISION"]);
   const runtimeUid = run(["exec", "-n", namespace, webPod.metadata.name, "-c", "web", "--", "id", "-u"]);
-  if (runtimeSource !== sourceSha || runtimeUid !== "1000") {
-    throw new Error(`runtime identity mismatch: source=${runtimeSource} uid=${runtimeUid}`);
-  }
-
   const healthPayload = run(["exec", "-n", namespace, webPod.metadata.name, "-c", "web", "--", "node", "--input-type=module", "-e",
-    'const out={}; for (const p of ["/api/health","/api/ready"]) { const r=await fetch(`http://127.0.0.1:3000${p}`); if (!r.ok) throw new Error(`${p} ${r.status}`); out[p]=await r.json(); } console.log(JSON.stringify(out));']);
+    'const base="http://127.0.0.1:3000"; const h=await fetch(`${base}/api/health`); const r=await fetch(`${base}/api/ready`); const user=await fetch(`${base}/api/feedback`); const admin=await fetch(`${base}/api/admin/accounts`); console.log(JSON.stringify({health:{status:h.status,body:await h.json(),cache:h.headers.get("cache-control"),csp:h.headers.get("content-security-policy")},ready:{status:r.status,body:await r.json()},auth:{user:user.status,admin:admin.status}}));']);
   const healthJson = JSON.parse(healthPayload);
-  const ready = healthJson["/api/ready"];
-  if (healthJson["/api/health"]?.status !== "ok" || ready?.status !== "ready" || ready?.sourceRevision !== sourceSha) {
-    throw new Error(`health/readiness payload mismatch: ${healthPayload}`);
-  }
-  for (const name of ["database", "migrations", "storage", "sourceRegistry", "github"]) {
-    if (ready.checks?.[name] !== "ok") throw new Error(`readiness check ${name} is not ok`);
-  }
+  assertRuntimeContract({ healthJson, sourceRevision: runtimeSource, expectedSourceRevision: sourceSha, uid: runtimeUid });
 
   const expectedMigrations = run(["exec", "-n", namespace, webPod.metadata.name, "-c", "web", "--", "node", "--input-type=module", "-e",
     'import {createHash} from "node:crypto"; import {readdirSync,readFileSync} from "node:fs"; for (const name of readdirSync("migrations").filter((v)=>/^\\d+.*\\.sql$/.test(v)).sort()) console.log(`${name}\\t${createHash("sha256").update(readFileSync(`migrations/${name}`)).digest("hex")}`);']);
@@ -85,8 +82,13 @@ try {
   const triage = cronJobs.find((job) => job.metadata.name.includes("triage"));
   const retention = cronJobs.find((job) => job.metadata.name.includes("retention"));
   if (!triage || !retention) throw new Error("triage and retention CronJobs must both exist");
-  if (triage.spec?.concurrencyPolicy !== "Forbid" || triage.spec?.timeZone !== "America/Chicago") {
-    throw new Error("triage CronJob must use concurrencyPolicy Forbid and America/Chicago");
+  for (const job of [triage, retention]) {
+    if (job.spec?.concurrencyPolicy !== "Forbid" || job.spec?.timeZone !== "America/Chicago" || job.spec?.suspend === true) {
+      throw new Error(`${job.metadata.name} must be enabled with concurrencyPolicy Forbid and America/Chicago`);
+    }
+    if (!job.spec?.schedule || !job.metadata?.labels || job.metadata.labels["app.kubernetes.io/instance"] !== appName) {
+      throw new Error(`${job.metadata.name} has invalid schedule or ownership labels`);
+    }
   }
   for (const job of [triage, retention]) {
     const images = (job.spec?.jobTemplate?.spec?.template?.spec?.containers || []).map((container) => container.image);
@@ -96,8 +98,19 @@ try {
   }
 
   const claims = json(["get", "pvc", "-n", namespace, "-o", "json"]).items;
-  if (!claims.some((claim) => claim.metadata.name.includes("attachments") && claim.status?.phase === "Bound")) {
-    throw new Error("private attachment PVC is not Bound");
+  const otherClaims = jsonOptional(["get", "pvc", "-n", otherNamespace, "-o", "json"], { items: [] }).items;
+  assertStorageContract(claims, otherClaims);
+
+  const ingresses = json(["get", "ingress", "-n", namespace, "-o", "json"]).items;
+  const expectedHost = new URL(publicUrl).hostname;
+  const hasRoute = ingresses.some((ingress) => ingress.spec?.rules?.some((rule) => rule.host === expectedHost)
+    && ingress.spec?.tls?.some((tls) => tls.hosts?.includes(expectedHost)));
+  if (!hasRoute) throw new Error(`ingress and TLS do not both declare ${expectedHost}`);
+
+  const accessResponse = await fetch(publicUrl, { redirect: "manual", signal: AbortSignal.timeout(15_000) });
+  const accessLocation = accessResponse.headers.get("location") || "";
+  if (![301, 302, 303, 307, 308].includes(accessResponse.status) || !accessLocation.includes("cloudflareaccess.com")) {
+    throw new Error(`Cloudflare Access did not protect ${publicUrl}: status=${accessResponse.status}`);
   }
 
   const warnings = json(["get", "events", "-n", namespace, "--field-selector", "type=Warning", "-o", "json"]).items.length;
@@ -126,6 +139,8 @@ try {
   console.log(`image_digest=${imageDigest}`);
   console.log(`migrations=${expectedMigrations.split("\n").filter(Boolean).length}`);
   console.log(`cronjobs=${triage.metadata.name},${retention.metadata.name}`);
+  console.log(`route=${publicUrl}`);
+  console.log("cloudflare_access=protected");
   console.log("health=green");
 } catch (error) {
   console.error(error.stderr?.toString().trim() || error.message);

@@ -22,7 +22,7 @@ Refresh and wait for `pointview-canary`. Verify:
 
 - Argo is Synced and Healthy at the expected homelab revision.
 - Migration completed and PostgreSQL migration names/digests exactly match the running image.
-- Web runs the exact registry digest as UID 1000 with zero restarts; triage and retention Job templates reference that same digest.
+- Web runs the exact registry digest as UID 10001 with zero restarts; triage and retention Job templates reference that same digest.
 - Liveness and readiness pass; readiness confirms migrations, database, attachment storage, source registry, and configured GitHub integration without making a model call; runtime `SOURCE_REVISION` matches the candidate.
 - The triage CronJob is daily, uses `concurrencyPolicy: Forbid` and `America/Chicago`, and a controlled empty run performs no model or GitHub mutation. Retention is separately scheduled and cannot acquire a triage lease.
 - Logs and recent events show no unexpected errors or warnings.

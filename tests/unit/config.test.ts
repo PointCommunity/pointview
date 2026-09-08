@@ -23,6 +23,7 @@ describe("parseServerConfig", () => {
     const parsed = parseServerConfig(valid);
     expect(parsed.baseUrl.href).toBe("https://view.pointatx.org/");
     expect(parsed.github.appId).toBe(123);
+    expect(parsed.triageWritesEnabled).toBe(false);
   });
 
   it("rejects insecure origins and short session secrets", () => {
@@ -35,5 +36,10 @@ describe("parseServerConfig", () => {
     expect(() => parseServerConfig({ ...valid, OPENAI_API_KEY: "", SESSION_SECRET: secret })).toThrowError(
       expect.not.objectContaining({ message: expect.stringContaining(secret) }),
     );
+  });
+
+  it("requires an explicit boolean string for the triage mutation boundary", () => {
+    expect(parseServerConfig({ ...valid, POINTVIEW_TRIAGE_WRITES_ENABLED: "true" }).triageWritesEnabled).toBe(true);
+    expect(() => parseServerConfig({ ...valid, POINTVIEW_TRIAGE_WRITES_ENABLED: "yes" })).toThrow();
   });
 });

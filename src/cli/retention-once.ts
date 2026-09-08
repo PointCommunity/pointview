@@ -1,10 +1,9 @@
-import { serverConfig } from "@/server/config";
-import { sqlClient } from "@/server/db/client";
+import { cliConfig, cliSql } from "@/cli/runtime";
 import { runRetention } from "@/server/retention/run";
 import { FileAttachmentStore } from "@/server/storage/file-store";
 
-const config = serverConfig();
-const sql = sqlClient();
+const config = cliConfig();
+const sql = cliSql(config.databaseUrl);
 try {
   const result = await runRetention(sql, new FileAttachmentStore(config.attachmentRoot));
   process.stdout.write(`${JSON.stringify({ event: "retention.completed", ...result })}\n`);

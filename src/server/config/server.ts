@@ -19,6 +19,7 @@ const schema = z.object({
   GITHUB_APP_PRIVATE_KEY: z.string().includes("PRIVATE KEY"),
   OPENAI_API_KEY: z.string().min(1),
   POINTVIEW_SOURCE_REVISION: z.string().min(1).max(128),
+  POINTVIEW_TRIAGE_WRITES_ENABLED: z.enum(["true", "false"]).default("false").transform((value) => value === "true"),
 });
 
 export type ServerConfig = {
@@ -32,6 +33,7 @@ export type ServerConfig = {
   github: { appId: number; installationId: number; privateKey: string };
   openAiApiKey: string;
   sourceRevision: string;
+  triageWritesEnabled: boolean;
 };
 
 export function parseServerConfig(environment: Record<string, string | undefined>): ServerConfig {
@@ -56,6 +58,6 @@ export function parseServerConfig(environment: Record<string, string | undefined
     },
     openAiApiKey: value.OPENAI_API_KEY,
     sourceRevision: value.POINTVIEW_SOURCE_REVISION,
+    triageWritesEnabled: value.POINTVIEW_TRIAGE_WRITES_ENABLED,
   };
 }
-

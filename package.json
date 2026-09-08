@@ -29,7 +29,8 @@
     "project:check": "node .agents/skills/pointview-pipeline-health/scripts/audit-project.mjs",
     "ci:check": "node scripts/audit-ci-alignment.mjs",
     "docs:check": "html-validate 'docs/*.html' && node scripts/audit-docs.mjs",
-    "check": "npm run lint && npm run typecheck && npm test && npm run test:coverage && npm run build && npm run docs:check && npm run skills:check && npm run ci:check"
+    "verify-live:fixture": "node scripts/verify-live-fixture.mjs",
+    "check": "npm run lint && npm run typecheck && npm test && npm run test:coverage && npm run build && npm run docs:check && npm run verify-live:fixture && npm run skills:check && npm run ci:check"
   },
   "dependencies": {
     "@prometheus-io/client": "0.16.1",
