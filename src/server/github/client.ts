@@ -70,9 +70,10 @@ export class GitHubAppClient {
     const identity = `${owner}/${repo}`;
     if (!this.#options.allowedRepositories.has(identity)) throw new Error(`Repository ${identity} is outside the allowlist`);
     if (path.includes("://") || path.split(/[?#]/, 1)[0].split("/").includes("..")) throw new Error("Repository API path is invalid");
-    const base = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/`;
-    const url = new URL(path.replace(/^\//, ""), base);
-    if (url.origin !== "https://api.github.com" || !url.pathname.startsWith(new URL(base).pathname)) {
+    const repository = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+    const repositoryPath = new URL(repository).pathname;
+    const url = path ? new URL(path.replace(/^\//, ""), `${repository}/`) : new URL(repository);
+    if (url.origin !== "https://api.github.com" || (url.pathname !== repositoryPath && !url.pathname.startsWith(`${repositoryPath}/`))) {
       throw new Error("Repository API path escapes its allowlisted repository");
     }
     return url;
@@ -108,7 +109,7 @@ export class GitHubAppClient {
   async repositoryPages<T = unknown>(owner: string, repo: string, path: string): Promise<T[]> {
     const items: T[] = [];
     let url: URL | null = this.#repositoryUrl(owner, repo, path);
-    const repositoryPrefix = this.#repositoryUrl(owner, repo, "").pathname;
+    const repositoryPrefix = `${this.#repositoryUrl(owner, repo, "").pathname}/`;
     while (url) {
       const response = await this.#authorizedFetch(url);
       const page = await response.json();
@@ -127,7 +128,7 @@ export class GitHubAppClient {
 
   async repositoryInstallationId(owner: string, repo: string): Promise<number> {
     const repositoryUrl = this.#repositoryUrl(owner, repo, "");
-    const url = new URL(`${repositoryUrl.pathname}installation`, repositoryUrl.origin);
+    const url = new URL(`${repositoryUrl.pathname}/installation`, repositoryUrl.origin);
     const response = await this.#fetch(url, {
       headers: {
         accept: "application/vnd.github+json",

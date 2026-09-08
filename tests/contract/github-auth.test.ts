@@ -27,6 +27,7 @@ describe("GitHub App client", () => {
     await expect(client.repositoryJson("PointCommunity", "pointview", "")).resolves.toMatchObject({
       full_name: "PointCommunity/pointview",
     });
+    expect(fetcher.mock.calls.map(([input]) => String(input))).toContain("https://api.github.com/repos/PointCommunity/pointview");
   });
 
   it("uses a cached in-memory installation token and enforces the repository allowlist", async () => {
