@@ -24,7 +24,12 @@ type RecordInput = {
   sourceRevision: string;
 };
 
-type ResearchBundle = { evidencePacket: EvidencePacket; validationContext: DecisionValidationContext };
+type EligibilityManifest = {
+  projectRevision: string; capturedAt: string; totalItemCount: number; nonDoneIssues: unknown[]; doneHistoryIds: string[];
+  openPullRequests: unknown[]; retrievalPolicyVersion: string; rankedCandidates: unknown[]; digest: string;
+};
+
+type ResearchBundle = { evidencePacket: EvidencePacket; validationContext: DecisionValidationContext; eligibilityManifest?: EligibilityManifest };
 
 export type PersistedOutcome = {
   recordId: string;
@@ -87,6 +92,7 @@ async function persistPlan(
   result: OrchestrationResult,
   profile: Dependencies["modelProfile"],
   evidenceManifestDigest: string,
+  eligibilityManifest?: EligibilityManifest,
 ): Promise<PersistedOutcome[]> {
   const plan = result.proposedDecision;
   const outcomes: PersistedOutcome[] = [];
@@ -153,6 +159,20 @@ async function persistPlan(
       `;
       if (result.status === "READY") outcomes.push({ recordId, unitId, decisionId, disposition: unit.disposition, reasonCode: unit.reason_code, mutation: unit.mutation, governedMetadata });
       await persistWebSources(tx, { unitId, sources: result.webSources });
+      if (eligibilityManifest) {
+        await tx`
+          insert into eligible_issue_manifests (
+            id, unit_id, project_revision, captured_at, total_item_count, non_done_issues, done_history_ids,
+            open_pull_requests, retrieval_policy_version, ranked_candidates, manifest_digest
+          ) values (
+            ${newId()}, ${unitId}, ${eligibilityManifest.projectRevision}, ${eligibilityManifest.capturedAt},
+            ${eligibilityManifest.totalItemCount}, ${tx.json(eligibilityManifest.nonDoneIssues as postgres.JSONValue)},
+            ${tx.json(eligibilityManifest.doneHistoryIds)}, ${tx.json(eligibilityManifest.openPullRequests as postgres.JSONValue)},
+            ${eligibilityManifest.retrievalPolicyVersion}, ${tx.json(eligibilityManifest.rankedCandidates as postgres.JSONValue)},
+            ${eligibilityManifest.digest}
+          )
+        `;
+      }
     }
     await tx`update feedback_records set state = ${result.status === "READY" ? "APPLYING" : "NEEDS_ATTENTION"} where id = ${recordId}`;
   });
@@ -208,7 +228,7 @@ export async function processRecord(sql: postgres.Sql, recordId: string, depende
     "digest" in research.evidencePacket.manifest && typeof research.evidencePacket.manifest.digest === "string"
     ? research.evidencePacket.manifest.digest
     : digest(research.evidencePacket);
-  const outcomes = await persistPlan(sql, recordId, result, dependencies.modelProfile, manifestDigest);
+  const outcomes = await persistPlan(sql, recordId, result, dependencies.modelProfile, manifestDigest, research.eligibilityManifest);
   if (result.status !== "READY") throw new RecordFailure(result.failureCode ?? "DECISION_NEEDS_ATTENTION");
   await applyOutcomes(sql, outcomes, dependencies.outcomes);
 }

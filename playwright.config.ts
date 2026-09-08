@@ -12,10 +12,10 @@ export default defineConfig({
   },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
-    { name: "mobile", use: { ...devices["iPhone 13"] } },
+    { name: "mobile", use: { ...devices["Desktop Chrome"], viewport: { width: 320, height: 720 }, hasTouch: true, isMobile: true } },
   ],
   webServer: {
-    command: "npm run dev -- --hostname 127.0.0.1 --port 3210",
+    command: "npm run e2e:prepare && npm run dev -- --hostname 127.0.0.1 --port 3210",
     url: "http://127.0.0.1:3210/api/health",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

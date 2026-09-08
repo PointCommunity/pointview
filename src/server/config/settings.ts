@@ -83,18 +83,20 @@ export async function updateSettings(sql: postgres.Sql, options: { actor: Reques
     `;
     if (!current || current.version !== options.expectedVersion) throw new SettingsError("SETTINGS_VERSION_CONFLICT", "Settings version changed", 412);
     const input = parsed.data;
+    let schemaDefinition: unknown;
+    try { schemaDefinition = JSON.parse(input.schemaText); } catch { throw new SettingsError("SCHEMA_JSON_INVALID", "Schema text must be valid JSON", 400); }
     const modelId = newId();
     await tx`update model_profiles set active = false, updated_at = now() where active`;
     const [{ count: modelVersion }] = await tx<{ count: number }[]>`select (count(*) + 1)::int as count from model_profiles`;
     await tx`
       insert into model_profiles (
         id, provider, model_identifier, reasoning_effort, max_input_tokens, max_output_tokens, timeout_ms,
-        active, secret_reference, prompt_version, prompt_digest, schema_version, schema_digest, version
+        active, secret_reference, prompt_version, prompt_digest, prompt_text, schema_version, schema_digest, schema_definition, version
       ) values (
         ${modelId}, ${input.model.provider}, ${input.model.modelIdentifier}, ${input.model.reasoningEffort},
         ${input.model.maxInputTokens}, ${input.model.maxOutputTokens}, ${input.model.timeoutMs}, true,
-        ${input.model.secretReference}, ${input.promptVersion}, ${sha256(input.promptText)}, ${input.schemaVersion},
-        ${sha256(input.schemaText)}, ${modelVersion}
+        ${input.model.secretReference}, ${input.promptVersion}, ${sha256(input.promptText)}, ${input.promptText}, ${input.schemaVersion},
+        ${sha256(input.schemaText)}, ${tx.json(schemaDefinition as postgres.JSONValue)}, ${modelVersion}
       )
     `;
     await tx`update application_settings set superseded_at = now() where id = ${current.id}`;
@@ -116,4 +118,22 @@ export async function updateSettings(sql: postgres.Sql, options: { actor: Reques
     });
   });
   return readSettings(sql, options.actor);
+}
+
+export async function readRuntimeProfile(sql: postgres.Sql) {
+  const [profile] = await sql<Array<{
+    settingsVersion: number; provider: string; modelIdentifier: string; reasoningEffort: string; maxInputTokens: number;
+    maxOutputTokens: number; timeoutMs: number; promptVersion: string; promptText: string; schemaVersion: string;
+    schemaDefinition: Record<string, unknown>; profileVersion: number; retrievalLimits: Record<string, number>;
+  }>>`
+    select s.version as "settingsVersion", mp.provider, mp.model_identifier as "modelIdentifier",
+      mp.reasoning_effort as "reasoningEffort", mp.max_input_tokens as "maxInputTokens",
+      mp.max_output_tokens as "maxOutputTokens", mp.timeout_ms as "timeoutMs", mp.prompt_version as "promptVersion",
+      mp.prompt_text as "promptText", mp.schema_version as "schemaVersion", mp.schema_definition as "schemaDefinition",
+      mp.version as "profileVersion", s.retrieval_limits as "retrievalLimits"
+    from application_settings s join model_profiles mp on mp.id = s.model_profile_id and mp.active
+    where s.superseded_at is null order by s.version desc limit 1
+  `;
+  if (!profile) throw new SettingsError("MODEL_PROFILE_UNAVAILABLE", "No active model profile is configured", 503);
+  return profile;
 }

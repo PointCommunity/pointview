@@ -23,7 +23,8 @@ for (const viewport of [
   });
 }
 
-test("skip link reaches main content", async ({ page }) => {
+test("skip link reaches main content", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === "mobile", "Touch-only emulation does not provide a hardware keyboard focus sequence.");
   await page.goto("/");
   await page.keyboard.press("Tab");
   await expect(page.getByRole("link", { name: "Skip to main content" })).toBeFocused();

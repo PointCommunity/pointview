@@ -16,6 +16,7 @@ type SourceTarget = {
   repo: string;
   projectNodeId: string;
   projectNumber: number;
+  installationId: number;
 };
 
 type OutcomeApplierOptions = {
@@ -29,11 +30,11 @@ export class GitHubOutcomeApplier {
   async #target(recordId: string): Promise<SourceTarget> {
     const [target] = await this.sql<SourceTarget[]>`
       select sa.github_owner as owner, sa.github_repo as repo, sa.github_project_node_id as "projectNodeId",
-        sa.github_project_number as "projectNumber"
+        sa.github_project_number as "projectNumber", sa.github_installation_id::int as "installationId"
       from feedback_records fr join source_apps sa on sa.id = fr.source_app_id
       where fr.id = ${recordId} and sa.enabled and sa.paused_at is null
     `;
-    if (!target.owner || !target.repo || !target.projectNodeId || !target.projectNumber) {
+    if (!target.owner || !target.repo || !target.projectNodeId || !target.projectNumber || !target.installationId) {
       throw new RecordFailure("SOURCE_GITHUB_TARGET_UNAVAILABLE");
     }
     return target;

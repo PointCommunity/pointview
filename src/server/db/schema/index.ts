@@ -58,8 +58,10 @@ export const modelProfiles = pgTable("model_profiles", {
   secretReference: text("secret_reference").notNull(),
   promptVersion: text("prompt_version").notNull(),
   promptDigest: text("prompt_digest").notNull(),
+  promptText: text("prompt_text").notNull(),
   schemaVersion: text("schema_version").notNull(),
   schemaDigest: text("schema_digest").notNull(),
+  schemaDefinition: jsonb("schema_definition").notNull(),
   version: integer().notNull().default(1),
   createdAt: time("created_at").notNull().defaultNow(),
   updatedAt: time("updated_at").notNull().defaultNow(),
@@ -278,7 +280,7 @@ export const eligibleIssueManifests = pgTable("eligible_issue_manifests", {
   openPullRequests: jsonb("open_pull_requests").notNull(),
   retrievalPolicyVersion: text("retrieval_policy_version").notNull(),
   rankedCandidates: jsonb("ranked_candidates").notNull(),
-  manifestDigest: text("manifest_digest").notNull().unique(),
+  manifestDigest: text("manifest_digest").notNull(),
 });
 
 export const modelRuns = pgTable("model_runs", {

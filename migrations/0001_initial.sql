@@ -97,8 +97,10 @@ create table if not exists model_profiles (
   secret_reference text not null,
   prompt_version text not null,
   prompt_digest text not null,
+  prompt_text text not null,
   schema_version text not null,
   schema_digest text not null,
+  schema_definition jsonb not null,
   version integer not null default 1,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -303,7 +305,7 @@ create table if not exists eligible_issue_manifests (
   open_pull_requests jsonb not null,
   retrieval_policy_version text not null,
   ranked_candidates jsonb not null,
-  manifest_digest text not null unique
+  manifest_digest text not null
 );
 
 create table if not exists model_runs (

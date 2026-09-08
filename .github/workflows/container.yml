@@ -16,15 +16,40 @@ concurrency:
 jobs:
   amd64:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - name: Verify bootstrap container boundary
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - name: Build exact AMD64 image without publishing
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: pointview:ci
+          build-args: POINTVIEW_SOURCE_REVISION=${{ github.sha }}
+      - name: Inspect runtime identity and command boundary
         shell: bash
         run: |
-          if [[ -f Dockerfile ]]; then
-            docker build --platform linux/amd64 --tag pointview:ci .
-          else
-            echo "Bootstrap phase: Dockerfile is introduced by implementation task T045."
-          fi
-
+          test "$(docker image inspect pointview:ci --format '{{.Architecture}}')" = amd64
+          test "$(docker image inspect pointview:ci --format '{{.Config.User}}')" = 10001:10001
+          test "$(docker image inspect pointview:ci --format '{{index .Config.Labels \"org.opencontainers.image.revision\"}}')" = "${GITHUB_SHA}"
+          exit_code=0
+          docker run --rm --entrypoint /app/scripts/container-entrypoint.sh pointview:ci unsupported || exit_code=$?
+          test "$exit_code" = 64
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        with:
+          image: pointview:ci
+          format: spdx-json
+          output-file: sbom.spdx.json
+          upload-artifact: false
+      - name: Scan image for high and critical vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: pointview:ci
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL

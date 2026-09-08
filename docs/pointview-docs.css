@@ -1,0 +1,39 @@
+:root {
+  color-scheme: dark;
+  --page: #080b12;
+  --panel: #111827;
+  --panel-strong: #182235;
+  --text: #f8fafc;
+  --muted: #b8c1d1;
+  --accent: #80e1d1;
+  --border: #34435d;
+  --warning: #ffd08a;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html { background: var(--page); scroll-behavior: smooth; }
+body { margin: 0; color: var(--text); background: radial-gradient(circle at top right, #14243a 0, var(--page) 34rem); line-height: 1.65; }
+a { color: var(--accent); text-underline-offset: .2em; }
+a:hover { text-decoration-thickness: .16em; }
+a:focus-visible { outline: .2rem solid var(--warning); outline-offset: .2rem; border-radius: .15rem; }
+.skip-link { position: absolute; left: 1rem; top: -5rem; padding: .75rem 1rem; background: var(--warning); color: #15100a; z-index: 10; }
+.skip-link:focus { top: 1rem; }
+header, main, footer { width: min(74rem, calc(100% - 2rem)); margin-inline: auto; }
+header { padding-block: 3.5rem 1.5rem; border-bottom: 1px solid var(--border); }
+header p { max-width: 66ch; color: var(--muted); font-size: 1.08rem; }
+h1 { font-size: clamp(2rem, 7vw, 4rem); letter-spacing: -.045em; line-height: 1.05; margin: 0 0 1rem; }
+h2 { margin-top: 3rem; line-height: 1.2; }
+h3 { margin-top: 1.7rem; }
+nav ul { display: flex; flex-wrap: wrap; gap: .55rem 1.1rem; list-style: none; padding: 0; }
+main { padding-block: 1rem 4rem; }
+section, .card { padding: clamp(1rem, 3vw, 1.5rem); margin-top: 1rem; background: color-mix(in srgb, var(--panel) 92%, transparent); border: 1px solid var(--border); border-radius: .8rem; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 1rem; }
+.eyebrow { color: var(--accent); font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.muted, footer { color: var(--muted); }
+.warning { border-left: .35rem solid var(--warning); }
+code { color: #bdebf7; background: #0b1220; padding: .1em .35em; border-radius: .25rem; overflow-wrap: anywhere; }
+table { width: 100%; border-collapse: collapse; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--border); padding: .65rem; text-align: left; vertical-align: top; }
+th { background: var(--panel-strong); }
+footer { border-top: 1px solid var(--border); padding-block: 1.5rem 3rem; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }

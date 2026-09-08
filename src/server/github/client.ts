@@ -138,6 +138,10 @@ export class GitHubAppClient {
     return result.id;
   }
 
+  async withInstallationToken<T>(callback: (token: string) => Promise<T>): Promise<T> {
+    return callback(await this.#installationToken());
+  }
+
   async projectReadback(projectNodeId: string): Promise<unknown> {
     if (!/^PVT_[A-Za-z0-9_-]+$/.test(projectNodeId)) throw new Error("GitHub Project node ID is invalid");
     const response = await this.#authorizedFetch(new URL("https://api.github.com/graphql"), {

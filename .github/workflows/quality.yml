@@ -16,10 +16,10 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: npm
@@ -27,5 +27,79 @@ jobs:
         run: npm ci
       - name: Verify application and repository governance
         run: npm run check
+      - name: Verify security boundaries and dependencies
+        run: npm run security:check
       - name: Check lifecycle scripts
         run: find .agents/skills/pointview-* -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17-bookworm
+        env:
+          POSTGRES_USER: pointview
+          POSTGRES_PASSWORD: pointview-ci
+          POSTGRES_DB: pointview_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pointview -d pointview_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_TEST_URL: postgresql://pointview:pointview-ci@127.0.0.1:5432/pointview_test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Rehearse migrations and database behavior serially
+        run: npm run test:integration
+
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-bookworm
+        env:
+          POSTGRES_USER: pointview
+          POSTGRES_PASSWORD: pointview-ci
+          POSTGRES_DB: pointview_browser
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pointview -d pointview_browser"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: test
+      POINTVIEW_BASE_URL: https://pointview.example.test
+      POINTVIEW_AUDIENCE: pointview-ci
+      DATABASE_URL: postgresql://pointview:pointview-ci@127.0.0.1:5432/pointview_browser
+      SESSION_SECRET: ci-only-session-secret-at-least-32-characters
+      CF_ACCESS_TEAM_DOMAIN: https://example.cloudflareaccess.com
+      CF_ACCESS_AUD: ci-access-audience
+      ATTACHMENT_ROOT: /tmp/pointview-ci-attachments
+      GITHUB_APP_ID: "1"
+      GITHUB_APP_INSTALLATION_ID: "1"
+      GITHUB_APP_PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----\nci-only-not-a-real-key\n-----END PRIVATE KEY-----"
+      OPENAI_API_KEY: ci-only-not-a-real-key
+      POINTVIEW_SOURCE_REVISION: ci
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install pinned Chromium runtime
+        run: npx playwright install --with-deps chromium
+      - name: Verify responsive and accessible browser behavior
+        run: npm run test:e2e

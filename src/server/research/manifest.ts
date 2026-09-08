@@ -61,7 +61,7 @@ export function buildEligibilityManifest(input: {
     projectRevision: input.projectRevision,
     capturedAt: input.capturedAt,
     totalItemCount: input.issues.length,
-    nonDoneIssues: nonDoneIssues.map(({ nodeId, number, status, title, labels }) => ({ nodeId, number, status, title, labels })),
+    nonDoneIssues: nonDoneIssues.map(({ nodeId, number, status, title, body, labels }) => ({ nodeId, number, status, title, body, labels })),
     doneHistoryIds: input.issues.filter((issue) => issue.status === "Done").map((issue) => issue.nodeId),
     openPullRequests: input.openPullRequests,
     retrievalPolicyVersion: input.retrievalPolicyVersion,
@@ -69,4 +69,3 @@ export function buildEligibilityManifest(input: {
   };
   return { ...body, digest: createHash("sha256").update(canonical(body)).digest("hex") };
 }
-

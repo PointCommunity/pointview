@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>PointView operations</title>
+  <link rel="stylesheet" href="pointview-docs.css">
+</head>
+<body>
+<a class="skip-link" href="#content">Skip to content</a>
+<header><p class="eyebrow">PointView runbook</p><h1>Operations</h1><p>Daily queue operations, health interpretation, incident controls, migration, backup, and recovery.</p><nav aria-label="Documentation"><ul><li><a href="architecture.html">Architecture</a></li><li><a href="source-app-integration.html">Source integration</a></li><li><a aria-current="page" href="operations.html">Operations</a></li><li><a href="privacy-and-retention.html">Privacy</a></li></ul></nav></header>
+<main id="content">
+  <section aria-labelledby="schedule"><h2 id="schedule">Daily schedule</h2><p>The Kubernetes triage CronJob runs once daily with concurrency policy <code>Forbid</code>. The Job invokes container mode <code>triage</code>; PostgreSQL is the final singleton authority. It leases exactly one oldest eligible record and continues sequentially until the queue is empty.</p><p>The retention CronJob invokes <code>retention</code> separately. Neither Job starts development work in a target repository.</p></section>
+  <section aria-labelledby="signals"><h2 id="signals">Health and signals</h2><table tabindex="0" aria-label="Operational health signals"><thead><tr><th>Endpoint or signal</th><th>Meaning</th><th>Operator response</th></tr></thead><tbody>
+    <tr><td><code>/api/health</code></td><td>Process is alive</td><td>Restart only after checking recent termination and Job history</td></tr>
+    <tr><td><code>/api/ready</code></td><td>Database, migration identity, storage, settings, and required dependencies are usable</td><td>Keep traffic out until every named check passes</td></tr>
+    <tr><td><code>/api/metrics</code></td><td>Sanitized queue, lease, batch, decision, error, and usage counters</td><td>Investigate age growth, expired leases, Needs Attention, or repeated integration failures</td></tr>
+    <tr><td>Admin operations</td><td>Human-readable batches, units, dispositions, evidence references, and errors</td><td>Use annotations and audited requeue only after correcting the cause</td></tr>
+  </tbody></table></section>
+  <section aria-labelledby="control"><h2 id="control">Pause and requeue</h2><ul><li>Only an Owner may pause or resume global triage. A pause reason is mandatory and versioned.</li><li>Admins may annotate records and requeue eligible Needs Attention records; each requeue creates a new decision generation.</li><li>Never edit lease or decision tables manually. Do not delete an operation marker to force a GitHub retry.</li><li>Rate-limit responses are honored. A global integration failure may stop drainage to prevent unsafe writes.</li></ul></section>
+  <section aria-labelledby="deploy"><h2 id="deploy">Deploy and promote</h2><ol><li>Run source, migration, security, browser, accessibility, and container gates on one clean commit.</li><li>Build once for <code>linux/amd64</code> and publish the immutable image to Zot.</li><li>Pin its digest in the isolated Canary GitOps app and verify UI, API, Jobs, storage, digest, and whole-cluster health.</li><li>Keep the pull request open and Issue In Review during human Canary review.</li><li>Only the exact approved candidate may be merged and promoted to Production, using the same digest without rebuilding.</li></ol></section>
+  <section aria-labelledby="migration"><h2 id="migration">Migration and rollback</h2><p>Run container mode <code>migrate</code> as an explicit pre-deploy Job. Migrations must be forward-compatible with the currently running image during rollout. Before Production, verify database backup freshness and restore evidence, PVC identities and reclaim policies, the current digest/configuration, and a non-destructive GitOps rollback commit.</p><p>Rollback application configuration through Gitea and Argo. Never restore or delete data without explicit human authorization.</p></section>
+  <section class="warning" aria-labelledby="incident"><h2 id="incident">Incident order</h2><ol><li>Pause triage if continued writes may be unsafe.</li><li>Preserve Job, pod, database, GitHub request, operation, and audit identifiers without copying secrets or raw feedback.</li><li>Classify record-local versus global failure.</li><li>Repair durable configuration or code through the governed repository pipeline.</li><li>Resume and verify oldest-first drainage, idempotent readback, and whole-cluster health.</li></ol></section>
+</main>
+<footer><p>Operational mutations flow through Git, Gitea, Argo CD, and the repository’s PointView lifecycle skills.</p></footer>
+</body>
+</html>

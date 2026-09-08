@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>PointView architecture</title>
+  <link rel="stylesheet" href="pointview-docs.css">
+</head>
+<body>
+<a class="skip-link" href="#content">Skip to content</a>
+<header>
+  <p class="eyebrow">PointView system guide</p>
+  <h1>Architecture</h1>
+  <p>A private contextual-feedback intake and evidence-bound GitHub Issue triage system. PointView makes triage decisions; it never starts development work.</p>
+  <nav aria-label="Documentation"><ul><li><a aria-current="page" href="architecture.html">Architecture</a></li><li><a href="source-app-integration.html">Source integration</a></li><li><a href="operations.html">Operations</a></li><li><a href="privacy-and-retention.html">Privacy</a></li></ul></nav>
+</header>
+<main id="content">
+  <section aria-labelledby="boundaries"><h2 id="boundaries">Trust boundaries</h2><div class="grid">
+    <div><h3>Source application</h3><p>Its backend signs short-lived, one-use Ed25519 launch assertions. Browser query strings and referrers are never trusted as provenance.</p></div>
+    <div><h3>PointView</h3><p>Cloudflare Access authenticates identity. PostgreSQL authorizes accounts and owns queue, lease, decision, operation, and audit state.</p></div>
+    <div><h3>External services</h3><p>Repository-scoped GitHub App credentials and the configured model key are server-only. The model receives bounded evidence and has no mutation credentials.</p></div>
+  </div></section>
+  <section aria-labelledby="flow"><h2 id="flow">Processing flow</h2><ol>
+    <li>A source backend signs context and POSTs the assertion to <code>/launch</code>.</li>
+    <li>PointView validates origin, issuer, audience, expiry, key, nonce, registration version, and return path before creating a token-free session.</li>
+    <li>An approved user submits text and up to five normalized screenshots. The database stores a queued record; no model call occurs during intake.</li>
+    <li>The daily CronJob takes the PostgreSQL singleton batch lock and leases the oldest eligible record.</li>
+    <li>Deterministic research captures every Project Issue, open pull requests, and relevant repository evidence. Done Issues remain history only.</li>
+    <li>The model proposes split units and dispositions under a strict schema. Deterministic validation rejects unsupported evidence, targets, labels, fields, and actions.</li>
+    <li>A risk review runs when required. Application code applies only <code>MERGED</code>, <code>CREATED</code>, or <code>CONSIDERED</code>, then verifies exact GitHub readback.</li>
+    <li>The worker releases the lease and continues one record at a time until empty or a recorded global blocker occurs.</li>
+  </ol></section>
+  <section aria-labelledby="data"><h2 id="data">Data ownership</h2><table tabindex="0" aria-label="Data ownership by system"><thead><tr><th>Store</th><th>Owns</th><th>Does not own</th></tr></thead><tbody>
+    <tr><td>PostgreSQL</td><td>Accounts, source versions, feedback state, evidence manifests, decisions, leases, operations, settings, audit chain</td><td>Screenshot bytes or deployment state</td></tr>
+    <tr><td>Private attachment volume</td><td>Normalized screenshot bytes under generated keys</td><td>Original filenames as paths or public assets</td></tr>
+    <tr><td>GitHub</td><td>Minimal evidence comments and created Issue content after verified mutation</td><td>Raw screenshots, private credentials, model output, development automation</td></tr>
+    <tr><td>Homelab GitOps</td><td>Immutable image digest and isolated Canary/Production runtime configuration</td><td>Application data or ad-hoc live edits</td></tr>
+  </tbody></table></section>
+  <section class="warning" aria-labelledby="authority"><h2 id="authority">Authority ceiling</h2><p>The automated triage runtime cannot assign implementation, change development status, create branches or pull requests, merge, deploy, close Issues, or set Done. A human Project Manager separately triggers each target app’s development pipeline.</p></section>
+  <section aria-labelledby="resilience"><h2 id="resilience">Failure and recovery</h2><ul><li>Database uniqueness enforces one active batch and one active lease globally.</li><li>Expired leases can be recovered without reordering the queue.</li><li>Stable GitHub markers and an operation ledger recover lost responses without duplicate comments or Issues.</li><li>Record-specific exhausted failures become Needs Attention and do not strand later records.</li><li>Canary and Production have separate URLs, databases, volumes, secrets, and Argo applications.</li></ul></section>
+</main>
+<footer><p>PointView architecture contract · Private operational documentation · No secrets belong in this file.</p></footer>
+</body>
+</html>

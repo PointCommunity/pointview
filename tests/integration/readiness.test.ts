@@ -24,8 +24,8 @@ describeDatabase("aggregate readiness", () => {
     expect(github).not.toHaveBeenCalled();
 
     const model = newId();
-    await sql`insert into model_profiles (id, provider, model_identifier, reasoning_effort, max_input_tokens, max_output_tokens, timeout_ms, active, secret_reference, prompt_version, prompt_digest, schema_version, schema_digest)
-      values (${model}, 'OPENAI', 'fixture', 'medium', 1000, 1000, 1000, true, 'op://pointview/openai', 'prompt-v1', ${"a".repeat(64)}, '1.1.0', ${"b".repeat(64)})`;
+    await sql`insert into model_profiles (id, provider, model_identifier, reasoning_effort, max_input_tokens, max_output_tokens, timeout_ms, active, secret_reference, prompt_version, prompt_digest, prompt_text, schema_version, schema_digest, schema_definition)
+      values (${model}, 'OPENAI', 'fixture', 'medium', 1000, 1000, 1000, true, 'op://pointview/openai', 'prompt-v1', ${"a".repeat(64)}, 'policy', '1.1.0', ${"b".repeat(64)}, '{}'::jsonb)`;
     await sql`update application_settings set model_profile_id = ${model} where superseded_at is null`;
     await sql`insert into source_apps (id, slug, display_name, enabled, github_owner, github_repo, github_project_node_id, github_project_number, github_installation_id, allowed_origins, return_url_prefixes, validation_status)
       values (${newId()}, 'ready', 'Ready', true, 'PointCommunity', 'pointview', 'PVT_expected', 4, 10, array['https://pointview.test'], array['https://pointview.test/'], 'VALID')`;
