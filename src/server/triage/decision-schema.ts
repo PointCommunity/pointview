@@ -55,7 +55,7 @@ export const triageDecisionSchema = z.object({
     title: bounded(160),
     summary: bounded(2000),
     kind: z.enum(["BUG", "FEATURE", "MAINTENANCE", "SECURITY", "OTHER"]),
-    split_reason: z.string().max(500).nullable().optional(),
+    split_reason: z.string().max(500).nullable(),
     disposition: z.enum(["MERGED", "CREATED", "CONSIDERED"]),
     confidence: z.number().min(0).max(1),
     reason_code: z.string().regex(/^[A-Z][A-Z0-9_]{1,63}$/),

@@ -4,8 +4,60 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 import { OpenAiDecisionModel } from "@/server/triage/model/openai";
+import { validateTriageDecision } from "@/server/triage/decision-validator";
 
 describe("OpenAI decision adapter", () => {
+  it("keeps the structured-output contract aligned with deterministic CREATED decisions", async () => {
+    const schema = JSON.parse(await fs.readFile(path.join(process.cwd(), "specs/001-feedback-triage-platform/contracts/triage-decision.schema.json"), "utf8"));
+    const unit = schema.properties.units.items;
+    const variants = unit.properties.mutation.anyOf;
+    const created = variants.find((variant: { properties?: { kind?: { const?: string } } }) => variant.properties?.kind?.const === "CREATE_ISSUE");
+    const serializedSchema = JSON.stringify(schema);
+    expect(unit.required).toContain("split_reason");
+    expect(unit.properties.mutation.oneOf).toBeUndefined();
+    expect(serializedSchema).not.toMatch(/"(?:oneOf|uniqueItems|\$schema|\$id)"|"format":"uri"/);
+    expect(created.properties.user_evidence.items.type).toBe("string");
+    expect(created.properties.research_findings.items.required).toEqual(["text", "evidence_ids", "source_urls"]);
+
+    expect(() => validateTriageDecision({
+      schema_version: "1.1.0",
+      record_summary: "A new feedback workflow is requested.",
+      units: [{
+        unit_key: "unit-1",
+        title: "Add feedback workflow",
+        summary: "The requested workflow is not covered by an existing Issue.",
+        kind: "FEATURE",
+        split_reason: null,
+        disposition: "CREATED",
+        confidence: 0.9,
+        reason_code: "NOVEL_SUPPORTED_REQUEST",
+        rationale: "Captured evidence supports a separately scoped Issue.",
+        evidence_ids: ["ev_user_12345678", "ev_repo_12345678"],
+        risk_flags: ["NEW_ISSUE"],
+        mutation: {
+          kind: "CREATE_ISSUE",
+          title: "Add feedback workflow",
+          summary: "Add the evidence-backed workflow.",
+          user_evidence: ["A user requested the workflow."],
+          research_findings: [{ text: "Repository evidence shows no existing implementation.", evidence_ids: ["ev_repo_12345678"], source_urls: [] }],
+          scope: ["Implement the requested workflow."],
+          acceptance_criteria: ["The workflow is available."],
+          verification: ["Exercise the workflow end to end."],
+          out_of_scope: [],
+          type_label: "type:feature",
+          area_labels: ["area:feedback"],
+          priority: "P2",
+          impact: "Medium",
+          effort: "M",
+        },
+      }],
+    }, {
+      evidenceIds: new Set(["ev_user_12345678", "ev_repo_12345678"]),
+      eligibleIssues: new Map(),
+      allowedAreaLabels: new Set(["area:feedback"]),
+    })).not.toThrow();
+  });
+
   it("uses strict structured output, hosted web search, store false, and no mutation tools", async () => {
     const fixture = {
       schema_version: "1.1.0",
