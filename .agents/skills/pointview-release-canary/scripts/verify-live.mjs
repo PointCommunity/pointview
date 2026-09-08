@@ -66,7 +66,7 @@ try {
     && (postgresPod.status?.containerStatuses || []).every((container) => container.ready && container.restartCount === 0);
   if (webPod.status?.phase !== "Running" || !postgresReady) throw new Error("web or PostgreSQL workload is not healthy");
 
-  const runtimeSource = run(["exec", "-n", namespace, webPod.metadata.name, "-c", "web", "--", "printenv", "SOURCE_REVISION"]);
+  const runtimeSource = run(["exec", "-n", namespace, webPod.metadata.name, "-c", "web", "--", "printenv", "POINTVIEW_SOURCE_REVISION"]);
   const runtimeUid = run(["exec", "-n", namespace, webPod.metadata.name, "-c", "web", "--", "id", "-u"]);
   const healthPayload = run(["exec", "-n", namespace, webPod.metadata.name, "-c", "web", "--", "node", "--input-type=module", "-e",
     'const base="http://127.0.0.1:3000"; const h=await fetch(`${base}/api/health`); const r=await fetch(`${base}/api/ready`); const user=await fetch(`${base}/api/feedback`); const admin=await fetch(`${base}/api/admin/accounts`); console.log(JSON.stringify({health:{status:h.status,body:await h.json(),cache:h.headers.get("cache-control"),csp:h.headers.get("content-security-policy")},ready:{status:r.status,body:await r.json()},auth:{user:user.status,admin:admin.status}}));']);
