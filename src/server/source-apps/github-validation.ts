@@ -17,7 +17,7 @@ const projectSchema = z.object({
       public: z.boolean(),
       fields: z.object({
         pageInfo: z.object({ hasNextPage: z.boolean() }),
-        nodes: z.array(z.object({ name: z.string(), options: z.array(z.object({ name: z.string() })) }).nullable()),
+        nodes: z.array(z.unknown()),
       }),
     }).nullable(),
   }),
@@ -44,7 +44,11 @@ export async function validateGitHubSourceTarget(client: GitHubAppClient, input:
     const projectResult = projectSchema.parse(projectRaw);
     if (projectResult.errors?.length || !projectResult.data.node) return { valid: false, errors: ["Project is inaccessible"] };
     if (projectResult.data.node.fields.pageInfo.hasNextPage) return { valid: false, errors: ["Project field readback exceeded the bounded validation page"] };
-    const fields = Object.fromEntries(projectResult.data.node.fields.nodes.filter((field) => field !== null).map((field) => [field.name, field.options.map((option) => option.name)]));
+    const singleSelectField = z.object({ name: z.string(), options: z.array(z.object({ name: z.string() })) });
+    const fields = Object.fromEntries(projectResult.data.node.fields.nodes.flatMap((field) => {
+      const parsed = singleSelectField.safeParse(field);
+      return parsed.success ? [[parsed.data.name, parsed.data.options.map((option) => option.name)]] : [];
+    }));
     const readback = {
       repository: { owner: repository.owner.login, name: repository.name, private: repository.private, installationId },
       project: {

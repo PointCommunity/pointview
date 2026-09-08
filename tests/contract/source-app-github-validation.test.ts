@@ -22,7 +22,7 @@ const input = {
   }],
 };
 
-function client(projectId = "PVT_pointguide") {
+function client(projectId = "PVT_pointguide", extraFields: unknown[] = []) {
   return {
     repositoryJson: async () => ({ name: "pointguide", private: true, owner: { login: "PointCommunity" } }),
     repositoryInstallationId: async () => 42,
@@ -36,6 +36,7 @@ function client(projectId = "PVT_pointguide") {
           fields: {
             pageInfo: { hasNextPage: false },
             nodes: [
+              ...extraFields,
               { name: "Status", options: ["Backlog", "On Hold", "In Progress", "In Review", "Done"].map((name) => ({ name })) },
               { name: "Priority", options: ["P0", "P1", "P2", "P3"].map((name) => ({ name })) },
               { name: "Impact", options: ["High", "Medium", "Low"].map((name) => ({ name })) },
@@ -62,5 +63,13 @@ describe("live GitHub source target validation", () => {
     expect(result.valid).toBe(false);
     expect(result.digest).toBeUndefined();
     expect(result.errors).toContain("Project identity does not match registration");
+  });
+
+  it("ignores non-single-select Project fields returned as empty union nodes", async () => {
+    await expect(validateGitHubSourceTarget(client("PVT_pointguide", [{}, null]), input)).resolves.toEqual({
+      valid: true,
+      errors: [],
+      digest: expect.stringMatching(/^[0-9a-f]{64}$/),
+    });
   });
 });
