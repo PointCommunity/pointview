@@ -39,7 +39,46 @@ type RuntimeResearchDependencies = {
   createClient?: (source: Source) => GitHubAppClient;
   collectRepository?: typeof collectRepositoryEvidence;
   now?: () => string;
+  loadAttachments?: (recordId: string) => Promise<ResearchAttachment[]>;
 };
+
+export type ResearchAttachment = {
+  id: string;
+  mimeType: "image/png" | "image/jpeg" | "image/webp";
+  byteSize: number;
+  width: number;
+  height: number;
+  sha256: string;
+  storageKey: string;
+};
+
+export async function loadVerifiedScreenshots(
+  attachments: ResearchAttachment[],
+  store: { read(key: string): Promise<Buffer> },
+) {
+  if (attachments.length > 5) throw new Error("Attachment count exceeds the model-input boundary");
+  let totalBytes = 0;
+  const screenshots = [];
+  for (const attachment of attachments) {
+    if (!new Set(["image/png", "image/jpeg", "image/webp"]).has(attachment.mimeType)) throw new Error("Attachment media type is not model-safe");
+    const bytes = await store.read(attachment.storageKey);
+    totalBytes += bytes.byteLength;
+    if (bytes.byteLength !== attachment.byteSize || createHash("sha256").update(bytes).digest("hex") !== attachment.sha256) {
+      throw new Error("Attachment bytes do not match immutable metadata");
+    }
+    if (totalBytes > 50 * 1024 * 1024) throw new Error("Attachment bytes exceed the model-input boundary");
+    const evidenceId = `ev_image_${attachment.id}`;
+    screenshots.push({
+      evidence: {
+        id: evidenceId,
+        kind: "SCREENSHOT",
+        facts: { mediaType: attachment.mimeType, byteSize: attachment.byteSize, width: attachment.width, height: attachment.height, sha256: attachment.sha256 },
+      },
+      image: { evidenceId, mediaType: attachment.mimeType, bytes },
+    });
+  }
+  return screenshots;
+}
 
 const projectItemsQuery = `query PointViewResearchProject($id: ID!, $cursor: String) {
   node(id: $id) {
@@ -69,7 +108,20 @@ export class RuntimeResearchProvider {
     appId: number;
     privateKeyPem: string;
     limits: { maxRankedIssues: number; maxFactCharacters: number; maxPacketBytes: number; maxRepositoryFiles: number };
+    attachmentStore: { read(key: string): Promise<Buffer> };
   }, readonly dependencies: RuntimeResearchDependencies = {}) {}
+
+  async #attachments(recordId: string) {
+    const attachments = this.dependencies.loadAttachments
+      ? await this.dependencies.loadAttachments(recordId)
+      : await this.sql<ResearchAttachment[]>`
+          select id, mime_type as "mimeType", byte_size as "byteSize", width, height, sha256, storage_key as "storageKey"
+          from attachments
+          where feedback_record_id = ${recordId} and deleted_at is null and decode_status = 'NORMALIZED' and scan_status = 'ACCEPTED'
+          order by ordinal
+        `;
+    return loadVerifiedScreenshots(attachments, this.options.attachmentStore);
+  }
 
   async #source(record: RecordInput): Promise<Source> {
     if (this.dependencies.loadSource) return this.dependencies.loadSource(record);
@@ -118,6 +170,7 @@ export class RuntimeResearchProvider {
 
   async prepare(record: RecordInput) {
     const snapshot = await this.#snapshot(record);
+    const screenshots = await this.#attachments(record.id);
     const capturedAt = this.dependencies.now?.() ?? new Date().toISOString();
     const manifest = buildEligibilityManifest({
       projectRevision: snapshot.project.revision,
@@ -142,10 +195,12 @@ export class RuntimeResearchProvider {
       feedback: { id: record.id, text: record.feedback, context: { source: record.sourceSlug, environment: record.environment, route: record.route, screen: record.screen, appVersion: record.appVersion, sourceRevision: record.sourceRevision } },
       manifest,
       repositoryEvidence,
+      screenshotEvidence: screenshots.map((screenshot) => screenshot.evidence),
       limits: this.options.limits,
     });
     return {
       evidencePacket,
+      images: screenshots.map((screenshot) => screenshot.image),
       eligibilityManifest: manifest,
       validationContext: {
         evidenceIds: new Set(evidencePacket.evidence.map((evidence) => evidence.id)),

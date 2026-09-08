@@ -37,6 +37,7 @@ export function buildEvidencePacket(input: {
     rankedCandidates: Ranked[];
   };
   repositoryEvidence: EvidencePacket["evidence"];
+  screenshotEvidence?: EvidencePacket["evidence"];
   limits: { maxRankedIssues: number; maxFactCharacters: number; maxPacketBytes: number };
 }): EvidencePacket {
   const { limits } = input;
@@ -64,6 +65,11 @@ export function buildEvidencePacket(input: {
         kind: "USER_EVIDENCE",
         facts: sanitize({ feedback: input.feedback.text, context: input.feedback.context }, limits.maxFactCharacters) as Record<string, unknown>,
       },
+      ...(input.screenshotEvidence ?? []).map((evidence) => ({
+        id: evidence.id,
+        kind: evidence.kind,
+        facts: sanitize(evidence.facts, limits.maxFactCharacters) as Record<string, unknown>,
+      })),
       ...selected.map(({ issue, ranked }) => ({
         id: `ev_issue_${issue.nodeId}`,
         kind: "ISSUE",

@@ -10,6 +10,11 @@ export type EvidencePacket = {
 export type DecisionRequest = {
   systemPolicy: string;
   evidencePacket: EvidencePacket;
+  images?: Array<{
+    evidenceId: string;
+    mediaType: "image/png" | "image/jpeg" | "image/webp";
+    bytes: Uint8Array;
+  }>;
 };
 
 import type { WebSource } from "./web-sources";

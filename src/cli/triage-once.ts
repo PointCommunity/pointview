@@ -8,6 +8,7 @@ import { GitHubAppClient } from "@/server/github/client";
 import { GitHubMutationAdapter } from "@/server/github/mutation-port";
 import { GitHubOutcomeApplier } from "@/server/github/outcome-applier";
 import { RuntimeResearchProvider } from "@/server/research/runtime";
+import { FileAttachmentStore } from "@/server/storage/file-store";
 import { drainQueue } from "@/server/triage/batch";
 import { OpenAiDecisionModel } from "@/server/triage/model/openai";
 import { DecisionOrchestrator } from "@/server/triage/orchestrator";
@@ -46,6 +47,7 @@ async function main() {
       maxPacketBytes: numberLimit("maxEvidenceBytes", 131_072),
       maxRepositoryFiles: numberLimit("maxRepositoryFiles", 20),
     },
+    attachmentStore: new FileAttachmentStore(config.attachmentRoot),
   });
   const outcomes = new GitHubOutcomeApplier(sql, {
     pointViewBaseUrl: config.baseUrl.href,

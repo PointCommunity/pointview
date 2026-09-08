@@ -43,7 +43,7 @@ export class DecisionOrchestrator {
   constructor(readonly primaryModel: DecisionModel, readonly reviewModel: DecisionModel) {}
 
   async decide(input: OrchestrationInput): Promise<OrchestrationResult> {
-    const primary = await this.primaryModel.decide({ systemPolicy: input.systemPolicy, evidencePacket: input.evidencePacket });
+    const primary = await this.primaryModel.decide({ systemPolicy: input.systemPolicy, evidencePacket: input.evidencePacket, images: input.images });
     const primarySources = mergeWebSources(primary.webSources);
     const primaryDecision = validateTriageDecision(primary.decision, {
       ...input.validationContext,
@@ -63,6 +63,7 @@ export class DecisionOrchestrator {
       systemPolicy: `${input.systemPolicy}\nIndependently review the proposed decision for: ${reasons.join(", ")}. ` +
         "Use the same evidence and schema. Do not broaden routing, target, labels, fields, or mutation authority.",
       evidencePacket: { ...input.evidencePacket, proposedDecisionForIndependentReview: primaryDecision },
+      images: input.images,
     });
     const webSources = mergeWebSources(primarySources, review.webSources);
     const reviewDecision = validateTriageDecision(review.decision, {

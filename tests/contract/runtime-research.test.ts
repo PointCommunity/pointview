@@ -1,6 +1,8 @@
+import { createHash } from "node:crypto";
+
 import { describe, expect, it, vi } from "vitest";
 
-import { RuntimeResearchProvider } from "@/server/research/runtime";
+import { loadVerifiedScreenshots, RuntimeResearchProvider } from "@/server/research/runtime";
 
 const source = {
   id: "src_1",
@@ -27,6 +29,18 @@ const record = {
 };
 
 describe("runtime research", () => {
+  it("rejects screenshot bytes that differ from immutable metadata", async () => {
+    await expect(loadVerifiedScreenshots([{
+      id: "018f4f6d-7c00-7000-8000-000000000099",
+      mimeType: "image/png",
+      byteSize: 5,
+      width: 1,
+      height: 1,
+      sha256: createHash("sha256").update("right").digest("hex"),
+      storageKey: "01/018f4f6d-7c00-7000-8000-000000000099.bin",
+    }], { read: async () => Buffer.from("wrong") })).rejects.toThrow(/immutable metadata/i);
+  });
+
   it("captures all project statuses, excludes Done from candidates, and reuses a source snapshot", async () => {
     const graphqlJson = vi.fn().mockResolvedValue({
       data: {
@@ -66,16 +80,27 @@ describe("runtime research", () => {
       files: [{ path: "src/profile.ts", excerpt: "validate profile", digest: "digest" }],
       history: ["deadbeef\t2026-09-07T00:00:00Z\tProfile work"],
     });
+    const screenshotBytes = Buffer.from("normalized-screenshot");
     const fakeClient = { graphqlJson, repositoryPages, withInstallationToken };
     const provider = new RuntimeResearchProvider({} as never, {
       appId: 1,
       privateKeyPem: "unused",
       limits: { maxRankedIssues: 10, maxFactCharacters: 12_000, maxPacketBytes: 131_072, maxRepositoryFiles: 20 },
+      attachmentStore: { read: async () => screenshotBytes },
     }, {
       loadSource: async () => source,
       createClient: () => fakeClient as never,
       collectRepository,
       now: () => "2026-09-07T12:00:00.000Z",
+      loadAttachments: async () => [{
+        id: "018f4f6d-7c00-7000-8000-000000000099",
+        mimeType: "image/png",
+        byteSize: screenshotBytes.byteLength,
+        width: 320,
+        height: 180,
+        sha256: createHash("sha256").update(screenshotBytes).digest("hex"),
+        storageKey: "01/018f4f6d-7c00-7000-8000-000000000099.bin",
+      }],
     });
 
     const first = await provider.prepare(record);
@@ -90,6 +115,18 @@ describe("runtime research", () => {
     expect(first.validationContext.eligibleIssues.has("issue_2")).toBe(false);
     expect(first.validationContext.allowedAreaLabels).toEqual(new Set(["area:feedback"]));
     expect(first.evidencePacket.evidence[0]?.facts.context).toMatchObject({ route: "/profile", sourceRevision: "abc123" });
+    expect(first.evidencePacket.evidence[1]).toMatchObject({
+      id: "ev_image_018f4f6d-7c00-7000-8000-000000000099",
+      kind: "SCREENSHOT",
+      facts: { mediaType: "image/png", width: 320, height: 180 },
+    });
+    expect(first.images).toEqual([expect.objectContaining({
+      evidenceId: "ev_image_018f4f6d-7c00-7000-8000-000000000099",
+      mediaType: "image/png",
+      bytes: screenshotBytes,
+    })]);
+    expect(JSON.stringify(first.evidencePacket)).not.toContain("storageKey");
+    expect(JSON.stringify(first.evidencePacket)).not.toContain(screenshotBytes.toString("base64"));
     expect(second.eligibilityManifest.projectRevision).toBe(first.eligibilityManifest.projectRevision);
   });
 
@@ -121,7 +158,8 @@ describe("runtime research", () => {
       appId: 1,
       privateKeyPem: "unused",
       limits: { maxRankedIssues: 10, maxFactCharacters: 12_000, maxPacketBytes: 131_072, maxRepositoryFiles: 20 },
-    }, { loadSource: async () => source, createClient: () => fakeClient as never });
+      attachmentStore: { read: async () => Buffer.alloc(0) },
+    }, { loadSource: async () => source, createClient: () => fakeClient as never, loadAttachments: async () => [] });
 
     await expect(provider.prepare(record)).rejects.toThrow("unexpected repository");
   });

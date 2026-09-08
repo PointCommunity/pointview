@@ -29,7 +29,12 @@ type EligibilityManifest = {
   openPullRequests: unknown[]; retrievalPolicyVersion: string; rankedCandidates: unknown[]; digest: string;
 };
 
-type ResearchBundle = { evidencePacket: EvidencePacket; validationContext: DecisionValidationContext; eligibilityManifest?: EligibilityManifest };
+type ResearchBundle = {
+  evidencePacket: EvidencePacket;
+  images?: Array<{ evidenceId: string; mediaType: "image/png" | "image/jpeg" | "image/webp"; bytes: Uint8Array }>;
+  validationContext: DecisionValidationContext;
+  eligibilityManifest?: EligibilityManifest;
+};
 
 export type PersistedOutcome = {
   recordId: string;
@@ -218,6 +223,7 @@ export async function processRecord(sql: postgres.Sql, recordId: string, depende
     result = await dependencies.orchestrator.decide({
       systemPolicy: dependencies.systemPolicy,
       evidencePacket: research.evidencePacket,
+      images: research.images,
       validationContext: research.validationContext,
     });
   } catch (error) {
