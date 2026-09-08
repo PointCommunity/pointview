@@ -22,6 +22,8 @@ LABEL org.opencontainers.image.source="https://github.com/PointCommunity/pointvi
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates git \
   && rm -rf /var/lib/apt/lists/* \
+  && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+  && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
   && groupadd --gid 10001 pointview \
   && useradd --uid 10001 --gid pointview --no-create-home --home-dir /tmp pointview \
   && mkdir -p /app /var/lib/pointview/attachments \
