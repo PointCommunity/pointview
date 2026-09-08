@@ -21,6 +21,9 @@ export default async function HomePage() {
           <span className="status-dot" aria-hidden="true" />
           Waiting for a verified product launch
         </div>
+        <form className="owner-entry" action="/bootstrap" method="post">
+          <button className="primary-button" type="submit">Owner administration</button>
+        </form>
       </section>
 
       <section className="feature-grid" aria-label="How PointView works">

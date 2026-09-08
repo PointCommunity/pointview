@@ -12,6 +12,7 @@ for (const viewport of [
 
     await expect(page.getByRole("heading", { level: 1, name: "Feedback without the routing work." })).toBeVisible();
     await expect(page.getByRole("status")).toContainText("Waiting for a verified product launch");
+    await expect(page.getByRole("button", { name: "Owner administration" })).toBeVisible();
     await expect.poll(() => page.locator("html").evaluate(() => document.defaultView?.performance.getEntriesByType("navigation").length)).toBe(1);
     const response = await page.request.get("/");
     expect(response.headers()["content-security-policy"]).toContain("script-src 'self' 'nonce-");

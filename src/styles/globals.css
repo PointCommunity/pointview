@@ -89,6 +89,7 @@ h1 { max-width: 14ch; margin: 0; font-size: clamp(2.65rem, 8vw, 6.75rem); line-h
   font-size: .9rem;
 }
 .status-dot { width: .55rem; height: .55rem; border-radius: 50%; background: var(--success); box-shadow: 0 0 1rem rgba(82, 212, 155, .65); }
+.owner-entry { margin-top: 1rem; }
 
 .feature-grid { display: grid; gap: 1rem; grid-template-columns: repeat(3, 1fr); }
 .feature-grid article {
