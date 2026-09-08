@@ -1,8 +1,8 @@
 import type postgres from "postgres";
 
 export const advisoryLocks = {
-  firstOwner: 0x50564f574e4552,
-  triageBatch: 0x50565452494147,
+  firstOwner: 0x50564f57,
+  triageBatch: 0x50565452,
 } as const;
 
 export async function withAdvisoryTransaction<T>(

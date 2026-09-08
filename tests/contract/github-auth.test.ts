@@ -1,0 +1,55 @@
+import { exportPKCS8, generateKeyPair } from "jose";
+import { describe, expect, it, vi } from "vitest";
+
+import { GitHubAppClient, GitHubRateLimitError } from "@/server/github/client";
+
+describe("GitHub App client", () => {
+  it("uses a cached in-memory installation token and enforces the repository allowlist", async () => {
+    const { privateKey } = await generateKeyPair("RS256", { extractable: true });
+    const privateKeyPem = await exportPKCS8(privateKey);
+    let tokenCalls = 0;
+    const fetcher = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith("/app/installations/456/access_tokens")) {
+        tokenCalls += 1;
+        return Response.json({ token: "installation-secret", expires_at: "2026-09-07T12:10:00.000Z" }, { status: 201 });
+      }
+      return Response.json({ full_name: "PointCommunity/pointguide", private: true });
+    });
+    const client = new GitHubAppClient({
+      appId: 123,
+      installationId: 456,
+      privateKeyPem,
+      allowedRepositories: new Set(["PointCommunity/pointguide"]),
+      fetcher,
+      now: () => new Date("2026-09-07T12:00:00.000Z"),
+    });
+    await client.repositoryJson("PointCommunity", "pointguide", "");
+    await client.repositoryJson("PointCommunity", "pointguide", "issues?state=open");
+    expect(tokenCalls).toBe(1);
+    expect(fetcher.mock.calls.every(([url]) => !String(url).includes("installation-secret"))).toBe(true);
+    await expect(client.repositoryJson("attacker", "repo", "issues")).rejects.toThrow(/allowlist/i);
+    expect(tokenCalls).toBe(1);
+  });
+
+  it("classifies rate limits with Retry-After", async () => {
+    const { privateKey } = await generateKeyPair("RS256", { extractable: true });
+    const fetcher = vi.fn(async (input: string | URL | Request) => {
+      if (String(input).includes("access_tokens")) {
+        return Response.json({ token: "secret", expires_at: "2999-01-01T00:00:00Z" }, { status: 201 });
+      }
+      return Response.json({ message: "rate limited" }, { status: 429, headers: { "retry-after": "7" } });
+    });
+    const client = new GitHubAppClient({
+      appId: 123,
+      installationId: 456,
+      privateKeyPem: await exportPKCS8(privateKey),
+      allowedRepositories: new Set(["PointCommunity/pointguide"]),
+      fetcher,
+    });
+    await expect(client.repositoryJson("PointCommunity", "pointguide", "issues")).rejects.toMatchObject<Partial<GitHubRateLimitError>>({
+      name: "GitHubRateLimitError",
+      retryAfterSeconds: 7,
+    });
+  });
+});
