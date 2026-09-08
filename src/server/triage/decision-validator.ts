@@ -1,9 +1,11 @@
 import { triageDecisionSchema, type TriageDecision } from "./decision-schema";
+import { normalizeWebSourceUrl } from "./model/web-sources";
 
 type Context = {
   evidenceIds: Set<string>;
   eligibleIssues: Map<string, { status: string }>;
   allowedAreaLabels: Set<string>;
+  webSourceUrls?: Set<string>;
 };
 
 const unsafeInstruction = /(?:ignore (?:all |the )?(?:previous|prior) instructions|system prompt|developer message|github token|api key|run (?:a )?(?:shell|command)|exfiltrat)/i;
@@ -40,6 +42,19 @@ export function validateTriageDecision(value: unknown, context: Context): Triage
     if (unit.kind === "SECURITY" && !unit.risk_flags.includes("SECURITY")) {
       throw new Error("Security decisions require independent review");
     }
+    const findings = unit.mutation.kind === "NO_GITHUB_CHANGE" ? [] : unit.mutation.research_findings;
+    for (const finding of findings) {
+      if (!finding.evidence_ids.length && !finding.source_urls.length) throw new Error("Research findings require evidence or web sources");
+      if (new Set(finding.evidence_ids).size !== finding.evidence_ids.length || finding.evidence_ids.some((id) => !context.evidenceIds.has(id))) {
+        throw new Error("Research finding references unavailable evidence");
+      }
+      if (new Set(finding.source_urls).size !== finding.source_urls.length || finding.source_urls.some((url) => {
+        const normalized = normalizeWebSourceUrl(url);
+        return !normalized || !context.webSourceUrls?.has(normalized);
+      })) {
+        throw new Error("Research finding references an uncaptured web source");
+      }
+    }
     if (unit.disposition === "MERGED") {
       if (unit.mutation.kind !== "MERGE_COMMENT") throw new Error("Disposition and mutation kind do not match");
       const target = context.eligibleIssues.get(unit.mutation.issue_node_id);
@@ -59,4 +74,3 @@ export function validateTriageDecision(value: unknown, context: Context): Triage
   }
   return decision;
 }
-

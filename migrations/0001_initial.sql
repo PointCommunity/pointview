@@ -280,6 +280,9 @@ create table if not exists research_captures (
   provenance jsonb not null default '{}'::jsonb
 );
 
+create unique index if not exists research_capture_unit_locator_kind
+  on research_captures (unit_id, kind, source_locator);
+
 create table if not exists eligible_issue_manifests (
   id uuid primary key,
   unit_id uuid not null unique references feedback_units(id),

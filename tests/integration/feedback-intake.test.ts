@@ -11,6 +11,7 @@ import { migrateDown, migrateUp } from "@/server/db/migrations";
 import { newId } from "@/server/db/ids";
 import { FileAttachmentStore } from "@/server/storage/file-store";
 import { consumeVerifiedLaunch } from "@/server/launch/repository";
+import { persistWebSources } from "@/server/research/web-captures";
 
 const databaseUrl = process.env.DATABASE_TEST_URL;
 const describeDatabase = databaseUrl ? describe : describe.skip;
@@ -143,6 +144,22 @@ describeDatabase("feedback intake persistence", () => {
       .rejects.toMatchObject({ code: "FEEDBACK_NOT_FOUND" });
     const own = await listFeedback(sql, { accountId, role: "OWNER", status: "ACTIVE", limit: 25 });
     expect(own.items.map((item) => item.id)).toContain(record.id);
+  });
+
+  it("persists the complete hosted web source list idempotently", async () => {
+    const [record] = await sql<{ id: string }[]>`select id from feedback_records order by sequence limit 1`;
+    const unitId = newId();
+    await sql`
+      insert into feedback_units (id, stable_key, feedback_record_id, ordinal, title, summary, kind_hint)
+      values (${unitId}, ${`unit:${unitId}`}, ${record.id}, 1, 'Fixture unit', 'Fixture summary', 'FEATURE')
+    `;
+    const source = { id: "ev_web_1234567890abcdef", url: "https://example.test/primary", title: "Primary documentation" };
+    await persistWebSources(sql, { unitId, sources: [source] });
+    await persistWebSources(sql, { unitId, sources: [source] });
+    const captures = await sql<{ sourceLocator: string; facts: { evidenceId: string } }[]>`
+      select source_locator as "sourceLocator", facts from research_captures where unit_id = ${unitId} and kind = 'WEB'
+    `;
+    expect(captures).toEqual([{ sourceLocator: source.url, facts: expect.objectContaining({ evidenceId: source.id }) }]);
   });
 
   it("compensates committed objects when the database transaction fails", async () => {

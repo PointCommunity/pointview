@@ -264,7 +264,7 @@ export const researchCaptures = pgTable("research_captures", {
   contentDigest: text("content_digest").notNull(),
   eligible: boolean().notNull().default(true),
   provenance: jsonb().notNull(),
-});
+}, (table) => [uniqueIndex("research_capture_unit_locator_kind").on(table.unitId, table.kind, table.sourceLocator)]);
 
 export const eligibleIssueManifests = pgTable("eligible_issue_manifests", {
   id: uuid().primaryKey(),

@@ -9,7 +9,7 @@ const context = {
 };
 
 const mergeDecision = {
-  schema_version: "1.0.0",
+  schema_version: "1.1.0",
   record_summary: "A screenshot upload concern.",
   units: [
     {
@@ -28,7 +28,11 @@ const mergeDecision = {
         kind: "MERGE_COMMENT",
         issue_node_id: "I_target_123",
         user_evidence_summary: "A user encountered this upload state.",
-        research_findings: ["The existing Issue explicitly covers failed uploads."],
+        research_findings: [{
+          text: "The existing Issue explicitly covers failed uploads.",
+          evidence_ids: ["ev_issue_12345678"],
+          source_urls: [],
+        }],
         scope_impact: "Add this report to the existing acceptance coverage.",
       },
     },
@@ -54,5 +58,24 @@ describe("model decision boundary", () => {
       ...mergeDecision,
       units: [{ ...mergeDecision.units[0], disposition: "CONSIDERED" }],
     }, context)).toThrow(/mutation/i);
+  });
+
+  it("rejects research findings that cite uncaptured web URLs", () => {
+    const decision = {
+      ...mergeDecision,
+      units: [{
+        ...mergeDecision.units[0],
+        mutation: {
+          ...mergeDecision.units[0].mutation,
+          research_findings: [{
+            text: "A web source supports this behavior.",
+            evidence_ids: [],
+            source_urls: ["https://attacker.test/unsupported"],
+          }],
+        },
+      }],
+    };
+    expect(() => validateTriageDecision(decision, context)).toThrow(/uncaptured web source/i);
+    expect(() => validateTriageDecision(decision, { ...context, webSourceUrls: new Set(["https://attacker.test/unsupported"]) })).not.toThrow();
   });
 });

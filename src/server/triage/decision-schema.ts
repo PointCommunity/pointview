@@ -11,12 +11,17 @@ const riskFlag = z.enum([
   "ACTIVE_ISSUE_MATCH",
   "MIXED_FEEDBACK",
 ]);
+const researchFinding = z.object({
+  text: bounded(2000),
+  evidence_ids: z.array(evidenceId).max(20),
+  source_urls: z.array(z.url().refine((value) => value.startsWith("https://"))).max(20),
+}).strict();
 
 const mergeMutation = z.object({
   kind: z.literal("MERGE_COMMENT"),
   issue_node_id: bounded(200).min(8),
   user_evidence_summary: bounded(2000),
-  research_findings: z.array(bounded(2000)).min(1).max(20),
+  research_findings: z.array(researchFinding).min(1).max(20),
   scope_impact: bounded(2000),
 }).strict();
 
@@ -25,7 +30,7 @@ const createMutation = z.object({
   title: bounded(200),
   summary: bounded(3000),
   user_evidence: z.array(bounded(2000)).min(1).max(20),
-  research_findings: z.array(bounded(2000)).min(1).max(30),
+  research_findings: z.array(researchFinding).min(1).max(30),
   scope: z.array(bounded(1000)).min(1).max(30),
   acceptance_criteria: z.array(bounded(1000)).min(1).max(30),
   verification: z.array(bounded(1000)).min(1).max(30),
@@ -43,7 +48,7 @@ const consideredMutation = z.object({
 }).strict();
 
 export const triageDecisionSchema = z.object({
-  schema_version: z.literal("1.0.0"),
+  schema_version: z.literal("1.1.0"),
   record_summary: bounded(1200),
   units: z.array(z.object({
     unit_key: z.string().regex(/^unit-[1-9][0-9]*$/),
@@ -62,4 +67,3 @@ export const triageDecisionSchema = z.object({
 }).strict();
 
 export type TriageDecision = z.infer<typeof triageDecisionSchema>;
-

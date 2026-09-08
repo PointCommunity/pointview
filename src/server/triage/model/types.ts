@@ -12,13 +12,15 @@ export type DecisionRequest = {
   evidencePacket: EvidencePacket;
 };
 
+import type { WebSource } from "./web-sources";
+
 export type DecisionResult = {
   decision: unknown;
   responseId: string | null;
   usage: { inputTokens: number; outputTokens: number; totalTokens: number };
+  webSources: WebSource[];
 };
 
 export interface DecisionModel {
   decide(request: DecisionRequest): Promise<DecisionResult>;
 }
-
