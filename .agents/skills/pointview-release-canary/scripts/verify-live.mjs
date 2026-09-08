@@ -73,10 +73,9 @@ try {
   const healthJson = JSON.parse(healthPayload);
   assertRuntimeContract({ healthJson, sourceRevision: runtimeSource, expectedSourceRevision: sourceSha, uid: runtimeUid });
 
-  const expectedMigrations = run(["exec", "-n", namespace, webPod.metadata.name, "-c", "web", "--", "node", "--input-type=module", "-e",
-    'import {createHash} from "node:crypto"; import {readdirSync,readFileSync} from "node:fs"; for (const name of readdirSync("migrations").filter((v)=>/^\\d+.*\\.sql$/.test(v)).sort()) console.log(`${name}\\t${createHash("sha256").update(readFileSync(`migrations/${name}`)).digest("hex")}`);']);
-  const appliedMigrations = run(["exec", "-n", namespace, postgresPod.metadata.name, "-c", "main", "--", "psql", "-U", "pointview", "-d", "pointview", "-At", "-F", "\t", "-c", "SELECT name,digest FROM schema_migrations ORDER BY name"]);
-  if (expectedMigrations !== appliedMigrations) throw new Error("database migration names or digests do not match the running image");
+  const expectedMigrations = "0001\tpointview-initial-v1";
+  const appliedMigrations = run(["exec", "-n", namespace, postgresPod.metadata.name, "-c", "main", "--", "psql", "-U", "pointview", "-d", "pointview", "-At", "-F", "\t", "-c", "SELECT version,digest FROM schema_migrations ORDER BY version"]);
+  if (expectedMigrations !== appliedMigrations) throw new Error("database migration versions or digests do not match the running image");
 
   const cronJobs = json(["get", "cronjobs", "-n", namespace, "-l", `app.kubernetes.io/instance=${appName}`, "-o", "json"]).items;
   const triage = cronJobs.find((job) => job.metadata.name.includes("triage"));

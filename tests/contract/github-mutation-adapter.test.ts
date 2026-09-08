@@ -13,6 +13,7 @@ function projectEnvelope() {
         fields: {
           pageInfo: { hasNextPage: false },
           nodes: [
+            {},
             { id: "F_status", name: "Status", options: [{ id: "O_backlog", name: "Backlog" }] },
             { id: "F_priority", name: "Priority", options: [{ id: "O_p2", name: "P2" }] },
             { id: "F_impact", name: "Impact", options: [{ id: "O_medium", name: "Medium" }] },

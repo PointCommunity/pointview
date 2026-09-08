@@ -5,6 +5,7 @@ import type { ProjectMutationReadback } from "./preconditions";
 type GraphqlEnvelope<T> = { data?: T; errors?: Array<{ message?: string }> };
 
 type ProjectField = { id: string; name: string; options: Array<{ id: string; name: string }> };
+type ProjectFieldNode = Partial<ProjectField>;
 
 type IssueNode = {
   id: string;
@@ -77,14 +78,20 @@ export class GitHubMutationAdapter implements GitHubMutationPort {
   }
 
   async #project(): Promise<{ id: string; number: number; public: boolean; fields: { nodes: ProjectField[]; pageInfo: { hasNextPage: boolean } } }> {
-    const envelope = await this.client.graphqlJson<GraphqlEnvelope<{ node: { id: string; number: number; public: boolean; fields: { nodes: ProjectField[]; pageInfo: { hasNextPage: boolean } } } | null }>>(
+    const envelope = await this.client.graphqlJson<GraphqlEnvelope<{ node: { id: string; number: number; public: boolean; fields: { nodes: ProjectFieldNode[]; pageInfo: { hasNextPage: boolean } } } | null }>>(
       projectQuery,
       { id: this.projectNodeId },
     );
     const project = dataOrThrow(envelope).node;
     if (!project) throw new Error("Registered GitHub Project is missing or inaccessible");
     if (project.fields.pageInfo.hasNextPage) throw new Error("Registered GitHub Project has more than 100 fields and cannot be safely validated");
-    return project;
+    const nodes = project.fields.nodes.filter((field): field is ProjectField => (
+      typeof field.id === "string"
+      && typeof field.name === "string"
+      && Array.isArray(field.options)
+      && field.options.every((option) => typeof option.id === "string" && typeof option.name === "string")
+    ));
+    return { ...project, fields: { ...project.fields, nodes } };
   }
 
   async readMutationPreconditions(): Promise<ProjectMutationReadback> {
