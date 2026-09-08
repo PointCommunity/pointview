@@ -1,4 +1,7 @@
-export default function HomePage() {
+import { connection } from "next/server";
+
+export default async function HomePage() {
+  await connection();
   return (
     <main id="main-content" className="shell">
       <header className="brand-bar" aria-label="PointView">
@@ -44,4 +47,3 @@ export default function HomePage() {
     </main>
   );
 }
-

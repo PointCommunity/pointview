@@ -75,7 +75,7 @@ describeDatabase("initial PostgreSQL migration", () => {
 
   it("keeps migration source files versioned", async () => {
     await expect(fs.readFile(path.join(process.cwd(), "migrations/0001_initial.sql"), "utf8")).resolves.toContain(
-      "create table feedback_records",
+      "create table if not exists feedback_records",
     );
   });
 });
