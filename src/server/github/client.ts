@@ -122,4 +122,44 @@ export class GitHubAppClient {
     }
     return items;
   }
+
+  async repositoryInstallationId(owner: string, repo: string): Promise<number> {
+    const repositoryUrl = this.#repositoryUrl(owner, repo, "");
+    const url = new URL(`${repositoryUrl.pathname}installation`, repositoryUrl.origin);
+    const response = await this.#fetch(url, {
+      headers: {
+        accept: "application/vnd.github+json",
+        authorization: `Bearer ${await this.#appJwt()}`,
+        "x-github-api-version": "2022-11-28",
+      },
+    });
+    if (!response.ok) throw new Error(`GitHub App installation lookup failed with HTTP ${response.status}`);
+    const result = z.object({ id: z.number().int().positive() }).parse(await response.json());
+    return result.id;
+  }
+
+  async projectReadback(projectNodeId: string): Promise<unknown> {
+    if (!/^PVT_[A-Za-z0-9_-]+$/.test(projectNodeId)) throw new Error("GitHub Project node ID is invalid");
+    const response = await this.#authorizedFetch(new URL("https://api.github.com/graphql"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        query: `query PointViewSourceProject($id: ID!) {
+          node(id: $id) {
+            ... on ProjectV2 {
+              id number public
+              fields(first: 100) {
+                pageInfo { hasNextPage }
+                nodes {
+                  ... on ProjectV2SingleSelectField { name options { name } }
+                }
+              }
+            }
+          }
+        }`,
+        variables: { id: projectNodeId },
+      }),
+    });
+    return response.json();
+  }
 }

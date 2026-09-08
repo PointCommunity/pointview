@@ -58,6 +58,10 @@ create table if not exists source_apps (
   github_installation_id bigint not null check (github_installation_id > 0),
   allowed_origins text[] not null check (cardinality(allowed_origins) > 0),
   return_url_prefixes text[] not null check (cardinality(return_url_prefixes) > 0),
+  governed_labels text[] not null default array['type:bug','type:feature','type:maintenance','type:security','area:ui'] check (cardinality(governed_labels) >= 5),
+  validation_status text not null default 'UNKNOWN' check (validation_status in ('VALID', 'INVALID', 'UNKNOWN')),
+  validation_checked_at timestamptz,
+  validation_digest text,
   paused_at timestamptz,
   pause_reason text,
   version integer not null default 1 check (version > 0),
@@ -389,4 +393,3 @@ for each row execute function forbid_append_only_mutation();
 insert into schema_migrations (version, digest)
 values ('0001', 'pointview-initial-v1')
 on conflict (version) do update set digest = excluded.digest;
-

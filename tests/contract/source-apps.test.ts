@@ -8,7 +8,7 @@ const registration = {
   installationId: 42,
   projectNodeId: "PVT_pointguide",
   projectNumber: 2,
-  creationLabels: ["type:feature", "area:ui"],
+  governedLabels: ["type:bug", "type:feature", "type:maintenance", "type:security", "area:ui"],
 };
 
 const readback = {
@@ -24,7 +24,7 @@ const readback = {
       Effort: ["XS", "S", "M", "L", "XL"],
     },
   },
-  labels: ["type:feature", "area:ui"],
+  labels: ["type:bug", "type:feature", "type:maintenance", "type:security", "area:ui"],
 };
 
 describe("source app activation", () => {
@@ -36,7 +36,7 @@ describe("source app activation", () => {
     const result = validateSourceTarget(registration, {
       ...readback,
       project: { ...readback.project, fields: { ...readback.project.fields, Status: ["Backlog", "Done"] } },
-      labels: ["type:feature"],
+      labels: ["type:bug", "type:feature", "type:maintenance", "type:security"],
     });
     expect(result.valid).toBe(false);
     expect(result.errors).toEqual(expect.arrayContaining([expect.stringMatching(/Status/), expect.stringMatching(/area:ui/)]));

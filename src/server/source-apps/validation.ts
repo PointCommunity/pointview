@@ -1,13 +1,13 @@
-type Registration = {
+export type Registration = {
   githubOwner: string;
   githubRepo: string;
   installationId: number;
   projectNodeId: string;
   projectNumber: number;
-  creationLabels: string[];
+  governedLabels: string[];
 };
 
-type TargetReadback = {
+export type TargetReadback = {
   repository: { owner: string; name: string; private: boolean; installationId: number };
   project: {
     nodeId: string;
@@ -42,13 +42,14 @@ export function validateSourceTarget(registration: Registration, readback: Targe
     }
   }
   const availableLabels = new Set(readback.labels);
-  for (const label of registration.creationLabels) {
+  for (const label of registration.governedLabels) {
     if (!availableLabels.has(label)) errors.push(`required label ${label} is missing`);
   }
-  const typeLabels = registration.creationLabels.filter((label) => label.startsWith("type:"));
-  const areaLabels = registration.creationLabels.filter((label) => label.startsWith("area:"));
-  if (typeLabels.length !== 1) errors.push("creation mapping must contain exactly one type label");
-  if (areaLabels.length < 1) errors.push("creation mapping must contain at least one area label");
+  const typeLabels = new Set(registration.governedLabels.filter((label) => label.startsWith("type:")));
+  const areaLabels = registration.governedLabels.filter((label) => label.startsWith("area:"));
+  for (const required of ["type:bug", "type:feature", "type:maintenance", "type:security"]) {
+    if (!typeLabels.has(required)) errors.push(`governed type label ${required} is missing`);
+  }
+  if (areaLabels.length < 1) errors.push("governed mapping must contain at least one area label");
   return { valid: errors.length === 0, errors };
 }
-
