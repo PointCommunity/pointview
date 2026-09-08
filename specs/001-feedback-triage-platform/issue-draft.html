@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PointView Issue 1 Draft</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #09111f; color: #e8eef8; }
+    body { margin: 0; background: radial-gradient(circle at top, #17233a 0, #09111f 48rem); }
+    main { width: min(72rem, calc(100% - 2rem)); margin: 0 auto; padding: 2rem 0 4rem; }
+    h1, h2 { color: #fff; line-height: 1.2; }
+    p, li, th, td { line-height: 1.6; }
+    .eyebrow { color: #8bd5ff; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .card { margin-top: 1rem; padding: 1.25rem; border: 1px solid #31415e; border-radius: 1rem; background: rgba(15, 25, 43, .94); box-shadow: 0 1rem 3rem rgba(0, 0, 0, .25); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: .75rem; border-bottom: 1px solid #31415e; text-align: left; vertical-align: top; }
+    th { width: 10rem; color: #9fb4d0; }
+    pre { margin: 0; padding: 1rem; overflow: auto; border-radius: .75rem; background: #050914; color: #dbeafe; white-space: pre-wrap; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    a { color: #8bd5ff; }
+    :focus-visible { outline: 3px solid #f8c15c; outline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="eyebrow">Exact bootstrap Issue draft</p>
+    <h1>Build the PointView feedback triage platform</h1>
+    <p>This draft is the approval boundary for the first governed PointView development Issue. The repository and Project do not yet exist; no remote mutation occurs until this exact draft and the implementation plan are approved.</p>
+
+    <section class="card" aria-labelledby="metadata-heading">
+      <h2 id="metadata-heading">Metadata</h2>
+      <table>
+        <tbody>
+          <tr><th>Repository</th><td><code>PointCommunity/pointview</code> (private)</td></tr>
+          <tr><th>Project</th><td><code>PointView</code> (private organization Project)</td></tr>
+          <tr><th>Status</th><td>Backlog</td></tr>
+          <tr><th>Priority</th><td>P1</td></tr>
+          <tr><th>Impact</th><td>High</td></tr>
+          <tr><th>Effort</th><td>XL</td></tr>
+          <tr><th>Type label</th><td><code>type:feature</code></td></tr>
+          <tr><th>Area labels</th><td><code>area:ai</code>, <code>area:data</code>, <code>area:deployment</code>, <code>area:feedback</code>, <code>area:github</code>, <code>area:identity</code>, <code>area:security</code>, <code>area:ui</code>, <code>area:workflow</code></td></tr>
+          <tr><th>Assignee</th><td>None</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" aria-labelledby="body-heading">
+      <h2 id="body-heading">Exact GitHub Issue body</h2>
+      <pre><code>&lt;h2&gt;Summary&lt;/h2&gt;
+&lt;p&gt;Build PointView as a private, separately hosted feedback application for Point Community products. An approved user follows a source-app Feedback link, sees cryptographically verified app/page context, enters feedback, optionally uploads screenshots, and never has to choose a repository, Project, label, or Issue.&lt;/p&gt;
+&lt;p&gt;Once daily, PointView drains every eligible untriaged record oldest-first and strictly one record at a time. It researches current work, code, documentation, pull requests, and appropriate primary external sources; splits mixed feedback into independently traceable units; and assigns each unit exactly one outcome: merge into one eligible non-Done Issue, create one new Backlog Issue, or consider with no GitHub mutation.&lt;/p&gt;
+
+&lt;h2&gt;User evidence&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;Users should provide only feedback and optional screenshots; source application/context must be attached automatically.&lt;/li&gt;
+  &lt;li&gt;Similar feedback should enrich existing work where justified, while mixed submissions may split across multiple outcomes.&lt;/li&gt;
+  &lt;li&gt;The daily job must continue one item at a time until the eligible queue is empty.&lt;/li&gt;
+  &lt;li&gt;PointView performs triage only. A human senior developer acting as Project Manager explicitly triggers implementation through each target app's own pipeline.&lt;/li&gt;
+  &lt;li&gt;Raw feedback/screenshots are retained for 180 days after terminal triage; minimized evidence, decisions, GitHub proofs, and audit lineage remain indefinitely.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2&gt;Research&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;Adopt PointGuide's current repository skills, private Project fields, one-active-development-Issue invariant, full quality gates, immutable Zot image, Argo-managed Canary, exact Production approval phrase, and same-digest promotion.&lt;/li&gt;
+  &lt;li&gt;Use signed single-use EdDSA launch assertions submitted by form POST; do not trust query parameters or referrers for routing.&lt;/li&gt;
+  &lt;li&gt;Use defense-in-depth screenshot validation and private normalized storage; raw images never enter GitHub.&lt;/li&gt;
+  &lt;li&gt;Use a Kubernetes CronJob only as the daily trigger. PostgreSQL singleton and lease invariants provide correctness because scheduled Jobs must be idempotent.&lt;/li&gt;
+  &lt;li&gt;Use deterministic evidence collection and GitHub application around a strict-schema model decision. The model has hosted web search but no database, GitHub, filesystem, provider-management, or cluster credentials/tools.&lt;/li&gt;
+  &lt;li&gt;Use a repository-scoped private GitHub App, stable operation markers, pre-write state refresh, and post-write readback.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2&gt;Scope&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;Private Next.js/TypeScript application with PostgreSQL, Cloudflare Access identity, local User/Admin/Owner authorization, and append-only sanitized audit events.&lt;/li&gt;
+  &lt;li&gt;Source-app registry and launch SDK; verified environment/route/screen/version/revision context; safe return path.&lt;/li&gt;
+  &lt;li&gt;Text feedback plus up to five normalized PNG/JPEG/WebP screenshots of at most 10 MiB each, stored privately.&lt;/li&gt;
+  &lt;li&gt;Daily oldest-first singleton triage, lease recovery, per-record retry isolation, deterministic research manifests, strict decision validation, risk-based second review, and usage/cost telemetry.&lt;/li&gt;
+  &lt;li&gt;Idempotent MERGED, CREATED, and CONSIDERED outcomes with full GitHub/Project readback and no development-status mutation.&lt;/li&gt;
+  &lt;li&gt;Role-based operations pages, pause/requeue controls, Needs Attention handling, health/readiness/metrics, and audited retention deletion.&lt;/li&gt;
+  &lt;li&gt;PointGuide-derived repository governance, CI, private PointView Project, and separate homelab Canary/Production applications.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2&gt;Acceptance criteria&lt;/h2&gt;
+&lt;ol&gt;
+  &lt;li&gt;Every accepted submission has verified source identity/context and requires no user-selected GitHub metadata.&lt;/li&gt;
+  &lt;li&gt;Forged, expired, replayed, disabled, cross-origin, or misrouted launch assertions fail closed.&lt;/li&gt;
+  &lt;li&gt;Unsafe uploads, cross-user record access, role escalation, prompt injection, unsupported citations, and out-of-scope model mutations fail closed.&lt;/li&gt;
+  &lt;li&gt;One daily batch leases at most one record concurrently, processes oldest-first, continues past isolated terminal record failures when safe, and drains until empty unless an Owner pauses it or a blocking integration failure prevents safe progress.&lt;/li&gt;
+  &lt;li&gt;Every processed unit has evidence-linked lineage and exactly one terminal MERGED, CREATED, or CONSIDERED disposition.&lt;/li&gt;
+  &lt;li&gt;All non-Done Project Issues are screened; Done work is history only; no mutation targets an Issue that is Done at pre-write refresh.&lt;/li&gt;
+  &lt;li&gt;Retries and lost responses produce no duplicate Issue or comment; every applied mutation has exact readback proof.&lt;/li&gt;
+  &lt;li&gt;Created Issues are open, unassigned, in Backlog, HTML-formatted, and carry one type, one or more areas, Priority, Impact, and Effort.&lt;/li&gt;
+  &lt;li&gt;Automated triage never changes development Status, assigns implementation, creates/changes a branch or PR, starts review/release, merges code, deploys, closes an Issue, or sets Done.&lt;/li&gt;
+  &lt;li&gt;Raw content is erased 180 days after terminal triage and on valid queued withdrawal; minimized durable provenance remains.&lt;/li&gt;
+  &lt;li&gt;Core logic maintains at least 80% line coverage and all required source, security, upload, migration, accessibility, responsive-browser, build, and AMD64 container gates pass.&lt;/li&gt;
+  &lt;li&gt;Canary and Production are isolated; the exact approved Canary image digest is promoted to Production without rebuilding.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2&gt;Verification&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;Unit/property tests for state machines, authorization, JWS/nonces, image validation, redaction, evidence and decision schemas, retry classification, and idempotency.&lt;/li&gt;
+  &lt;li&gt;PostgreSQL integration tests for first-Owner race, final-Owner protection, singleton batch/lease behavior, crash recovery, attachment compensation, and retention.&lt;/li&gt;
+  &lt;li&gt;Contract/fault tests for complete Project pagination, GitHub App permissions, Project mutations, status drift, rate limits, and lost responses.&lt;/li&gt;
+  &lt;li&gt;Adversarial tests for injection in feedback/Issues/code/web, forged routing, cross-user IDs, upload attacks, unsafe citations, and forbidden development actions.&lt;/li&gt;
+  &lt;li&gt;Playwright/axe validation at 320, 768, and 1280 CSS pixels, 200% zoom, keyboard/touch, reduced motion, and user/admin flows.&lt;/li&gt;
+  &lt;li&gt;Exact-source/tree/image/digest/GitOps proof, Canary live API/UI/Job verification, whole-cluster health, rollback evidence, and same-digest Production readback.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2&gt;Out of scope&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;Automatically implementing, branching, reviewing, merging, releasing, deploying, closing, or setting Done on feedback-derived Issues.&lt;/li&gt;
+  &lt;li&gt;Public/anonymous intake, silent screenshots, video/audio/document uploads, and PointGuide knowledge/training functionality.&lt;/li&gt;
+  &lt;li&gt;Changing other application repositories to add their Feedback link/signing endpoint; PointView supplies the launch SDK/contract, while each real integration is a separate human-triggered Issue in that app's pipeline.&lt;/li&gt;
+  &lt;li&gt;Automatically reopening or mutating Done Issues.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2&gt;Design sources&lt;/h2&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href="https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/"&gt;Kubernetes CronJob documentation&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href="https://docs.github.com/en/enterprise-cloud%40latest/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-as-a-github-app-installation"&gt;GitHub App installation authentication&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href="https://docs.github.com/en/issues/planning-and-tracking-with-projects/automating-your-project/using-the-api-to-manage-projects"&gt;GitHub Projects API&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href="https://developers.openai.com/api/docs/guides/structured-outputs"&gt;OpenAI Structured Outputs&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href="https://developers.openai.com/api/docs/guides/tools-web-search"&gt;OpenAI Web Search&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href="https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html"&gt;OWASP File Upload Cheat Sheet&lt;/a&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;a href="https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html"&gt;OWASP Logging Cheat Sheet&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Detailed specification, research, data model, API/model contracts, quickstart, and task breakdown are versioned in &lt;code&gt;specs/001-feedback-triage-platform/&lt;/code&gt;.&lt;/p&gt;</code></pre>
+    </section>
+  </main>
+</body>
+</html>

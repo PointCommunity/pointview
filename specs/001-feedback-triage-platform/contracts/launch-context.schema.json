@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pointview.eaglepass.io/contracts/launch-context.v1.schema.json",
+  "title": "PointView Launch Context v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["iss", "aud", "iat", "exp", "jti", "source_app", "environment", "context"],
+  "properties": {
+    "iss": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,62}$" },
+    "aud": { "const": "pointview" },
+    "iat": { "type": "integer", "minimum": 1 },
+    "exp": { "type": "integer", "minimum": 1 },
+    "jti": { "type": "string", "minLength": 20, "maxLength": 200 },
+    "source_app": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,62}$" },
+    "environment": { "enum": ["development", "canary", "production"] },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["location"],
+      "properties": {
+        "location": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "screen_name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "app_version": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "source_revision": { "type": "string", "pattern": "^[A-Za-z0-9._/-]{1,100}$" },
+        "return_url": { "type": "string", "format": "uri", "maxLength": 1000 }
+      }
+    }
+  }
+}

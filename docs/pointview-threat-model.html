@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PointView Threat Model</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #08111d; color: #e7edf7; }
+    body { margin: 0; background: radial-gradient(circle at 15% 0, #172b46 0, #08111d 46rem); }
+    main { width: min(78rem, calc(100% - 2rem)); margin: auto; padding: 2rem 0 4rem; }
+    h1, h2, h3 { color: #fff; line-height: 1.2; }
+    p, li, td, th { line-height: 1.6; }
+    a { color: #8bd5ff; }
+    .lede { max-width: 70ch; color: #b8c7db; font-size: 1.08rem; }
+    .card { margin: 1rem 0; padding: 1.25rem; border: 1px solid #30435f; border-radius: 1rem; background: rgba(13, 25, 42, .94); }
+    .grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: .75rem; text-align: left; vertical-align: top; border-bottom: 1px solid #30435f; }
+    th { color: #a9bdd7; }
+    code { color: #c4e8ff; background: #050b14; padding: .1rem .3rem; border-radius: .25rem; }
+    .high { color: #ffb4a9; font-weight: 700; }
+    .medium { color: #ffd38a; font-weight: 700; }
+    .low { color: #8de5ba; font-weight: 700; }
+    :focus-visible { outline: 3px solid #f8c15c; outline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <main>
+    <p>Confirmed security architecture · 2026-09-07</p>
+    <h1>PointView threat model</h1>
+    <p class="lede">PointView is an Access-protected homelab application that accepts confidential product feedback and optional screenshots, uses a model to organize evidence, and can create or enrich GitHub Issues. It is not intended to receive payment-card, health, or other regulated records.</p>
+
+    <section class="card">
+      <h2>Scope and assumptions</h2>
+      <ul>
+        <li><strong>Confirmed:</strong> users are authenticated through Cloudflare Access and approved in PointView.</li>
+        <li><strong>Confirmed:</strong> submissions may contain confidential product material and incidental personal information, but regulated records are prohibited.</li>
+        <li><strong>Confirmed:</strong> initial mutation targets are selected repositories and private Projects in the PointCommunity GitHub organization.</li>
+        <li><strong>Confirmed:</strong> Canary and Production are distinct homelab Kubernetes applications with separate data, storage, secrets, and domains.</li>
+        <li><strong>Out of scope:</strong> attacks requiring control of Cloudflare, GitHub, OpenAI, 1Password, or cluster administration are supply-chain/administrator compromise scenarios; PointView still limits blast radius through least privilege and immutable evidence.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Trust boundaries</h2>
+      <ol>
+        <li><strong>User browser → Cloudflare Access → PointView:</strong> HTTPS, edge authentication, PointView session, CSRF/origin checks, application rate limits, resource authorization.</li>
+        <li><strong>Source-app backend → browser → <code>/launch</code>:</strong> form POST carrying a short-lived EdDSA JWS; issuer/audience/time/key/origin/return URL validation and transactional nonce consumption.</li>
+        <li><strong>Browser → upload decoder → private storage:</strong> multipart limits, magic/decode/dimension/pixel validation, re-encoding, generated keys, private retrieval.</li>
+        <li><strong>Web/Job process → PostgreSQL:</strong> TLS/private network, least-privilege database role, parameterized queries, constraints, advisory lock, append-only audit.</li>
+        <li><strong>Triage collector → GitHub:</strong> allowlisted repository/Project, short-lived GitHub App installation token, paginated reads, bounded writes, rate-limit handling.</li>
+        <li><strong>Evidence packet → OpenAI Responses API:</strong> redacted bounded evidence, strict schema, <code>store:false</code>, hosted web search only, no PointView credentials or mutation tools.</li>
+        <li><strong>Release workstation → Zot → Gitea/Argo → cluster:</strong> clean committed source, immutable AMD64 digest, exact-candidate promotion and readback.</li>
+      </ol>
+    </section>
+
+    <section class="card">
+      <h2>Assets and entry points</h2>
+      <div class="grid">
+        <div><h3>High-value assets</h3><ul><li>Raw feedback and normalized screenshots</li><li>Source provenance and routing</li><li>GitHub App and provider secret references</li><li>Issue/Project integrity</li><li>Decision and audit lineage</li><li>Release image and GitOps identity</li></ul></div>
+        <div><h3>Untrusted entry points</h3><ul><li><code>POST /launch</code></li><li>Feedback multipart form</li><li>Record and attachment identifiers</li><li>Admin JSON mutations</li><li>GitHub Issues, PRs, repository content</li><li>Web-search results and model output</li><li>Job environment/configuration and external API responses</li></ul></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Prioritized abuse paths</h2>
+      <table>
+        <thead><tr><th>ID</th><th>Priority</th><th>Type and path</th><th>Impact</th><th>Required controls</th></tr></thead>
+        <tbody>
+          <tr><td>TM-01</td><td class="high">High</td><td>Spoofing/tampering: forge or replay launch context to route feedback into another repository.</td><td>Unauthorized GitHub mutation and false provenance.</td><td>EdDSA issuer/audience/time/key checks, nonce uniqueness, origin and return allowlists, source activation readback, browser cannot choose routing.</td></tr>
+          <tr><td>TM-02</td><td class="high">High</td><td>Elevation/tampering: prompt injection in feedback, Issue, code, screenshot, or web result instructs the model to misuse tools.</td><td>Wrong Issue, privacy disclosure, or broader action.</td><td>No credentials/mutation tools in model boundary; bounded evidence; strict structured output; evidence/routing/privacy/eligibility validators; risk review.</td></tr>
+          <tr><td>TM-03</td><td class="high">High</td><td>Information disclosure: broken object authorization exposes another user's feedback or screenshot.</td><td>Confidential or personal-data exposure.</td><td>Server-side ownership/role policy on every lookup, opaque IDs, non-enumerating failures, private no-store retrieval, access audit, negative tests.</td></tr>
+          <tr><td>TM-04</td><td class="high">High</td><td>Tampering/repudiation: lost or retried GitHub response creates duplicate Issues/comments or incomplete Project metadata.</td><td>Backlog corruption and untraceable work.</td><td>Stable operation marker, unique idempotency key, ordered operation ledger, search-before-write, precondition refresh, step readback, request IDs.</td></tr>
+          <tr><td>TM-05</td><td class="high">High</td><td>Information disclosure: malicious or metadata-rich image reaches public storage, logs, GitHub, or model without consent.</td><td>Persistent confidential-data exposure.</td><td>Allowlist, hard byte/pixel limits, decode/re-encode, generated private key, explicit upload notice, role checks, no GitHub bytes, 180-day deletion.</td></tr>
+          <tr><td>TM-06</td><td class="high">High</td><td>Elevation: GitHub App token or provider key leaks to logs, repository URL, database, model input, process output, or image layer.</td><td>Cross-repository/API compromise and cost.</td><td>1Password secret injection, short-lived in-memory token, askpass clone, redaction, secret scans, no raw errors/output, restricted installation and egress.</td></tr>
+          <tr><td>TM-07</td><td class="medium">Medium</td><td>Denial of service: decompression bomb, repeated submissions/downloads, or continuously growing queue exhausts CPU/storage/model budget.</td><td>Slow or unavailable service and unexpected spend.</td><td>Edge/application quotas, byte/dimension/pixel/decode time limits, 429/Retry-After, private retrieval throttles, cost metrics, Owner pause, storage alerts.</td></tr>
+          <tr><td>TM-08</td><td class="medium">Medium</td><td>Tampering: concurrent/duplicate CronJobs or expired lease recovery processes a record twice.</td><td>Duplicate decisions and GitHub operations.</td><td>CronJob Forbid, PostgreSQL advisory singleton, one-active-lease constraint, heartbeats, stable unit/operation keys, idempotent recovery.</td></tr>
+          <tr><td>TM-09</td><td class="medium">Medium</td><td>Elevation: Pending/User/Admin account invokes Owner function or removes the final Owner.</td><td>Integration takeover or service lockout.</td><td>Database-backed role/function policy, optimistic concurrency, transactional first/final Owner invariants, CSRF, audit and matrix tests.</td></tr>
+          <tr><td>TM-10</td><td class="medium">Medium</td><td>SSRF/lateral movement: attacker-controlled locator causes PointView to fetch internal or arbitrary network resources.</td><td>Homelab reconnaissance or credential service access.</td><td>No generic URL fetcher; source targets from validated GitHub installation; hosted web search occurs outside PointView; exact return allowlist; Kubernetes egress allowlist.</td></tr>
+          <tr><td>TM-11</td><td class="medium">Medium</td><td>Repudiation/tampering: operator or fault changes raw material, evidence, or logs after decision.</td><td>Unreliable provenance and inability to audit.</td><td>Insert-only payload until deletion, append-only annotations, content digests, immutable decision versions, hash-linked audit events, restricted log access.</td></tr>
+          <tr><td>TM-12</td><td class="medium">Medium</td><td>Tampering/disclosure: Canary and Production share storage, secrets, database, or a rebuilt artifact.</td><td>Production data loss/leak or unreviewed code release.</td><td>Separate resources and URLs, exact tree/image digest, no Production rebuild, Argo readback, migration/rollback rehearsal, whole-cluster verification.</td></tr>
+          <tr><td>TM-13</td><td class="low">Low</td><td>Information disclosure: errors, metrics, or audit data reveal email, IP, paths, tokens, raw model output, or feedback.</td><td>Limited operational data exposure.</td><td>Problem Details, correlation IDs, data minimization, sanitization/log-injection tests, no raw User-Agent/IP by default, role-limited operator views.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Security verification focus</h2>
+      <ul>
+        <li>Negative authorization tests for every record, attachment, administrative function, and GitHub target.</li>
+        <li>Adversarial corpus covering JWS replay/routing, upload polyglots and bombs, prompt injection, unsupported citations, unsafe HTML, and log injection.</li>
+        <li>Fault injection at each GitHub operation boundary and concurrent/expired Job execution.</li>
+        <li>Secret scanning of source, history, build context, layers, logs, fixtures, and generated evidence.</li>
+        <li>Canary egress, identity, storage isolation, retention deletion, immutable digest, rollback, and whole-cluster checks.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Residual risks</h2>
+      <p>Model judgment can still be wrong despite validation; ambiguous cases therefore resolve to Considered or Needs Attention, and a second review is required for defined risk triggers. Approved operators can view sensitive raw submissions during the retention window; access logging, least privilege, and periodic role review remain operational responsibilities. Compromise of a trusted platform or administrator is not eliminated, but repository selection, short-lived credentials, isolated environments, immutable provenance, and restricted egress reduce blast radius.</p>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "pointview",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "skills:check": "node .agents/skills/pointview-maintain-skills/scripts/audit-alignment.mjs",
+    "project:check": "node .agents/skills/pointview-pipeline-health/scripts/audit-project.mjs",
+    "check": "npm run skills:check && npm run project:check"
+  }
+}

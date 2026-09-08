@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PointView Development Pipeline Policy</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #07111e; color: #e8eef8; }
+    body { margin: 0; background: radial-gradient(circle at 15% 0, #19314e 0, #07111e 48rem); }
+    main { width: min(76rem, calc(100% - 2rem)); margin: auto; padding: 2rem 0 4rem; }
+    h1, h2, h3 { color: #fff; line-height: 1.2; }
+    p, li, th, td { line-height: 1.6; }
+    .card { margin: 1rem 0; padding: 1.25rem; border: 1px solid #304762; border-radius: 1rem; background: rgba(12, 25, 42, .94); }
+    .flow { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); }
+    .step { padding: 1rem; border-radius: .75rem; background: #101f34; border-left: .25rem solid #68c7ff; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: .75rem; border-bottom: 1px solid #304762; text-align: left; vertical-align: top; }
+    th { color: #a9bdd7; }
+    code { color: #bde7ff; background: #050b14; padding: .1rem .3rem; border-radius: .25rem; }
+    strong { color: #fff; }
+    :focus-visible { outline: 3px solid #f8c15c; outline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <main>
+    <p>Repository-owned governance · Project #4</p>
+    <h1>PointView development pipeline</h1>
+    <p>PointView uses one governed Issue from Backlog through verified Production. The agent owns deterministic Project movement and delivery work; the human Project Manager selects work and approves the exact Production candidate.</p>
+
+    <section class="card">
+      <h2>Lifecycle</h2>
+      <div class="flow" aria-label="Issue delivery sequence">
+        <div class="step"><strong>Backlog</strong><br>Open, unassigned, complete metadata.</div>
+        <div class="step"><strong>In Progress</strong><br>One active Issue, assigned to <code>brimdor</code>, Issue branch.</div>
+        <div class="step"><strong>Agent review</strong><br>Tests, security, browser QA, CI, remediation.</div>
+        <div class="step"><strong>Canary</strong><br>Exact head, immutable Zot digest, Argo deployment.</div>
+        <div class="step"><strong>In Review</strong><br>PM tests the recorded live candidate.</div>
+        <div class="step"><strong>Production</strong><br>Approved tree, same digest, verification, cleanup, Done.</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Agent-owned Project movement</h2>
+      <p>The agent reads, changes, and immediately reads back Status and metadata. The PM never has to drag a card. Exactly one Issue may be in <strong>In Progress</strong> or <strong>In Review</strong>. Backlog Issues are open and unassigned; the active Issue is assigned only to <code>brimdor</code>.</p>
+      <table>
+        <thead><tr><th>Status</th><th>Meaning</th><th>Allowed transition</th></tr></thead>
+        <tbody>
+          <tr><td>Backlog</td><td>Governed, inactive work</td><td>PM selection → In Progress</td></tr>
+          <tr><td>On Hold</td><td>Explicitly paused, inactive</td><td>PM resume → In Progress</td></tr>
+          <tr><td>In Progress</td><td>Implementation and agent QA</td><td>Verified Canary → In Review</td></tr>
+          <tr><td>In Review</td><td>Exact live Canary awaits PM decision</td><td>Finding → In Progress; exact approval → Production/Done</td></tr>
+          <tr><td>Done</td><td>Production and cluster verified, Issue closed</td><td>Terminal</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Issue and pull-request contract</h2>
+      <ul>
+        <li>New work requires a complete approved HTML Issue body and metadata before creation.</li>
+        <li>Every open Issue is in the private PointView Project with Status, Priority, Impact, Effort, exactly one <code>type:*</code> label, and at least one <code>area:*</code> label.</li>
+        <li>Branches use <code>issue/&lt;number&gt;-&lt;slug&gt;</code>. Pull requests target <code>main</code>, contain <code>Refs #N</code>, and never use an auto-close keyword.</li>
+        <li>An open PR does not justify In Review. Complete QA, exact CI, live Canary, and whole-cluster health are required first.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Feedback-triage boundary</h2>
+      <p>PointView's runtime may create a new Backlog Issue or add one privacy-minimized comment to a non-Done Issue. Those operations do not take the active development slot and never change development Status. Runtime triage cannot assign implementation, create branches or pull requests, invoke repository lifecycle skills, merge, deploy, close, or set Done. Only the PM starts development through the target repository's own pipeline.</p>
+    </section>
+
+    <section class="card">
+      <h2>Quality and Canary</h2>
+      <ol>
+        <li>Implement test-first in small vertical slices and preserve unrelated work.</li>
+        <li>Run focused tests while iterating, then <code>npm run check</code>, browser/accessibility tests, security checks, production build, migration rehearsal, dependency audit, and <code>git diff --check</code>.</li>
+        <li>Require successful GitHub <strong>Quality / verify</strong> and <strong>Container / amd64</strong> for the exact PR head.</li>
+        <li>Build from a clean committed archive on the local workstation for <code>linux/amd64</code>. Never build on Kubernetes nodes.</li>
+        <li>Push once to Zot, resolve the registry digest, and pin the immutable digest in <code>apps/pointview-canary</code>.</li>
+        <li>Check the latest stable version published by the official bjw-s chart repository, review upgrade notes, and inspect rendered changes before adoption.</li>
+        <li>Deploy only through the canonical Gitea-backed homelab GitOps repository and Argo CD. Verify source SHA, digest, migrations, web, triage/retention Jobs, storage, Access, and whole-cluster health.</li>
+      </ol>
+    </section>
+
+    <section class="card">
+      <h2>Production lock</h2>
+      <p>Production requires the exact phrase <code>Approved to merge and deploy production</code> for the recorded Issue, PR head/tree, Zot digest, chart generation, and Canary homelab revision. Any candidate change invalidates approval.</p>
+      <p>After approval, prove tree equality, squash-merge, wait for required merge-result checks, and promote the identical Canary digest to <code>apps/pointview</code> <strong>without rebuilding</strong>. No second approval or pause occurs. Keep the Issue open and In Review until Production and the whole cluster are green.</p>
+      <p>Homelab data is critical. Verify PVC/PV identity, reclaim policies, current configuration, backup freshness/restorability, migration compatibility, and non-destructive rollback before Production mutation. Destructive data restoration requires new PM authorization.</p>
+      <p>After successful verification, the Production workflow purges obsolete unreferenced PointView image manifests from Zot and proves the retained Production digest remains pullable. It does not wait for Zot's delayed background garbage collection. Only then close the Issue and set Done.</p>
+    </section>
+
+    <section class="card">
+      <h2>Skill ownership</h2>
+      <ul>
+        <li><code>pointview-create-issue</code>: draft and approved Backlog creation.</li>
+        <li><code>pointview-audit-issues</code>: Backlog-only metadata audit.</li>
+        <li><code>pointview-work-issue</code>: selection, active slot, implementation, PR.</li>
+        <li><code>pointview-review-issue</code>: full QA, remediation, Canary, In Review.</li>
+        <li><code>pointview-release-canary</code>: immutable packaging and Canary verification.</li>
+        <li><code>pointview-close-issue</code> and <code>pointview-release-production</code>: exact approval, merge, Production, cleanup, closure.</li>
+        <li><code>pointview-pipeline-health</code>: read-only drift/health audit.</li>
+        <li><code>pointview-maintain-skills</code>: governance maintenance.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

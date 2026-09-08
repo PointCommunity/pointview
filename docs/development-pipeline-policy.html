@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PointView Repository and Project Baseline</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #07111e; color: #e8eef8; }
+    body { margin: 0; background: radial-gradient(circle at 15% 0, #19314e 0, #07111e 48rem); }
+    main { width: min(72rem, calc(100% - 2rem)); margin: auto; padding: 2rem 0 4rem; }
+    h1, h2 { color: #fff; line-height: 1.2; }
+    p, li, th, td { line-height: 1.6; }
+    section { margin: 1rem 0; padding: 1.25rem; border: 1px solid #304762; border-radius: 1rem; background: rgba(12, 25, 42, .94); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: .7rem; border-bottom: 1px solid #304762; text-align: left; vertical-align: top; }
+    th { color: #a9bdd7; }
+    code { color: #bde7ff; background: #050b14; padding: .1rem .3rem; border-radius: .25rem; }
+    a { color: #7dd3fc; }
+    :focus-visible { outline: 3px solid #f8c15c; outline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <main>
+    <p>Verified bootstrap record · 2026-09-07</p>
+    <h1>PointView repository and development pipeline</h1>
+    <p>The private PointView repository and private organization Project adopt PointGuide's governed Issue lifecycle while preserving PointView's triage-only runtime boundary.</p>
+
+    <section>
+      <h2>Repository baseline</h2>
+      <table>
+        <tbody>
+          <tr><th>Repository</th><td><code>PointCommunity/pointview</code>, private</td></tr>
+          <tr><th>Default branch</th><td><code>main</code></td></tr>
+          <tr><th>Merge policy</th><td>Squash only; merged branches are deleted</td></tr>
+          <tr><th>Actions</th><td>Read-only default token; workflows cannot approve pull requests</td></tr>
+          <tr><th>Security</th><td>Vulnerability alerts and automated security fixes enabled; advanced-security billing was not activated</td></tr>
+          <tr><th>Checks</th><td><strong>Quality / verify</strong> and <strong>Container / amd64</strong></td></tr>
+        </tbody>
+      </table>
+      <p>GitHub returned HTTP 403 for repository rulesets because private-repository rulesets are unavailable on the current plan. PointView's deterministic Project/PR audits and CI checks fail closed; a server-enforced ruleset remains an explicit hosting-plan constraint rather than a falsely claimed control.</p>
+    </section>
+
+    <section>
+      <h2>Private Project #4</h2>
+      <p><a href="https://github.com/orgs/PointCommunity/projects/4">PointView</a> is linked to the repository and contains no copied PointGuide items.</p>
+      <table>
+        <thead><tr><th>Field</th><th>Options</th></tr></thead>
+        <tbody>
+          <tr><td>Status</td><td>Backlog, On Hold, In Progress, In Review, Done</td></tr>
+          <tr><td>Priority</td><td>P0, P1, P2, P3</td></tr>
+          <tr><td>Impact</td><td>High, Medium, Low</td></tr>
+          <tr><td>Effort</td><td>XS, S, M, L, XL</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Authority boundary</h2>
+      <p>The PointView runtime may create a governed Backlog Issue, merge minimized evidence into a non-Done Issue, or record a no-mutation Considered outcome. It cannot begin development. Only the human PM selects work, after which repository-owned lifecycle skills govern implementation, Canary, exact-candidate Production approval, same-digest promotion, and closure.</p>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pointview.eaglepass.io/contracts/triage-decision.v1.schema.json",
+  "title": "PointView Triage Decision v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "record_summary", "units"],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "record_summary": { "type": "string", "minLength": 1, "maxLength": 1200 },
+    "units": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["unit_key", "title", "summary", "kind", "disposition", "confidence", "reason_code", "rationale", "evidence_ids", "risk_flags", "mutation"],
+        "properties": {
+          "unit_key": { "type": "string", "pattern": "^unit-[1-9][0-9]*$" },
+          "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+          "summary": { "type": "string", "minLength": 1, "maxLength": 2000 },
+          "kind": { "enum": ["BUG", "FEATURE", "MAINTENANCE", "SECURITY", "OTHER"] },
+          "split_reason": { "type": ["string", "null"], "maxLength": 500 },
+          "disposition": { "enum": ["MERGED", "CREATED", "CONSIDERED"] },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "reason_code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{1,63}$" },
+          "rationale": { "type": "string", "minLength": 1, "maxLength": 4000 },
+          "evidence_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 40,
+            "uniqueItems": true,
+            "items": { "type": "string", "pattern": "^ev_[A-Za-z0-9_-]{8,80}$" }
+          },
+          "risk_flags": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "enum": ["NEW_ISSUE", "LOW_CONFIDENCE", "SECURITY", "PRIVACY", "MULTIPLE_MATCHES", "ACTIVE_ISSUE_MATCH", "MIXED_FEEDBACK"] }
+          },
+          "mutation": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["kind", "issue_node_id", "user_evidence_summary", "research_findings", "scope_impact"],
+                "properties": {
+                  "kind": { "const": "MERGE_COMMENT" },
+                  "issue_node_id": { "type": "string", "minLength": 8, "maxLength": 200 },
+                  "user_evidence_summary": { "type": "string", "minLength": 1, "maxLength": 2000 },
+                  "research_findings": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "items": { "type": "string", "minLength": 1, "maxLength": 2000 }
+                  },
+                  "scope_impact": { "type": "string", "minLength": 1, "maxLength": 2000 }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["kind", "title", "summary", "user_evidence", "research_findings", "scope", "acceptance_criteria", "verification", "out_of_scope", "type_label", "area_labels", "priority", "impact", "effort"],
+                "properties": {
+                  "kind": { "const": "CREATE_ISSUE" },
+                  "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+                  "summary": { "type": "string", "minLength": 1, "maxLength": 3000 },
+                  "user_evidence": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "items": { "type": "string", "minLength": 1, "maxLength": 2000 }
+                  },
+                  "research_findings": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 30,
+                    "items": { "type": "string", "minLength": 1, "maxLength": 2000 }
+                  },
+                  "scope": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 30,
+                    "items": { "type": "string", "minLength": 1, "maxLength": 1000 }
+                  },
+                  "acceptance_criteria": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 30,
+                    "items": { "type": "string", "minLength": 1, "maxLength": 1000 }
+                  },
+                  "verification": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 30,
+                    "items": { "type": "string", "minLength": 1, "maxLength": 1000 }
+                  },
+                  "out_of_scope": {
+                    "type": "array",
+                    "maxItems": 30,
+                    "items": { "type": "string", "minLength": 1, "maxLength": 1000 }
+                  },
+                  "type_label": { "enum": ["type:bug", "type:feature", "type:maintenance", "type:security"] },
+                  "area_labels": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": { "type": "string", "pattern": "^area:[a-z0-9-]+$" }
+                  },
+                  "priority": { "enum": ["P0", "P1", "P2", "P3"] },
+                  "impact": { "enum": ["High", "Medium", "Low"] },
+                  "effort": { "enum": ["XS", "S", "M", "L", "XL"] }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["kind", "revisit_condition"],
+                "properties": {
+                  "kind": { "const": "NO_GITHUB_CHANGE" },
+                  "revisit_condition": { "type": ["string", "null"], "maxLength": 1000 }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

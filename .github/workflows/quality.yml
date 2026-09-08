@@ -1,0 +1,29 @@
+name: Quality
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify repository governance
+        run: npm run skills:check
+      - name: Check lifecycle scripts
+        run: find .agents/skills/pointview-* -type f -name '*.mjs' -print0 | xargs -0 -n1 node --check
+

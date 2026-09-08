@@ -1,0 +1,30 @@
+name: Container
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: container-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  amd64:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify bootstrap container boundary
+        shell: bash
+        run: |
+          if [[ -f Dockerfile ]]; then
+            docker build --platform linux/amd64 --tag pointview:ci .
+          else
+            echo "Bootstrap phase: Dockerfile is introduced by implementation task T045."
+          fi
+
