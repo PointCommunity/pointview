@@ -78,4 +78,12 @@ describeDatabase("initial PostgreSQL migration", () => {
       "create table if not exists feedback_records",
     );
   });
+
+  it("is safe to run again after the migration is recorded", async () => {
+    await expect(migrateUp(sql)).resolves.toBeUndefined();
+    const rows = await sql<{ version: string; digest: string }[]>`
+      select version, digest from schema_migrations where version = '0001'
+    `;
+    expect(rows).toEqual([{ version: "0001", digest: "pointview-initial-v1" }]);
+  });
 });
