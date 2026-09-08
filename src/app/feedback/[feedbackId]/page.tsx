@@ -1,10 +1,12 @@
 import Link from "next/link";
+import Image from "next/image";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 
 import { AppShell } from "@/components/app-shell";
 import { WithdrawButton } from "@/components/feedback/withdraw-button";
+import { TriageControls } from "@/components/triage/triage-controls";
 import { csrfCookie } from "@/server/auth/csrf";
 import { authenticateSession } from "@/server/auth/request";
 import { sessionCookie } from "@/server/auth/session";
@@ -49,7 +51,8 @@ export default async function FeedbackDetailPage({ params }: Props) {
           <div className="attachment-grid">
             {record.attachments.map((attachment, index) => (
               <Link key={attachment.id} href={`/api/feedback/${record.id}/attachments/${attachment.id}`} target="_blank">
-                Screenshot {index + 1}<small>{attachment.width} × {attachment.height} · {Math.ceil(attachment.sizeBytes / 1024)} KiB</small>
+                <Image src={`/api/feedback/${record.id}/attachments/${attachment.id}`} alt={`Submitted screenshot ${index + 1}`} width={attachment.width} height={attachment.height} unoptimized />
+                <span>Screenshot {index + 1}</span><small>{attachment.width} × {attachment.height} · {Math.ceil(attachment.sizeBytes / 1024)} KiB</small>
               </Link>
             ))}
           </div>
@@ -58,6 +61,16 @@ export default async function FeedbackDetailPage({ params }: Props) {
       {record.units.length ? (
         <section className="detail-card"><h2>Triage outcomes</h2><ul>{record.units.map((unit) => <li key={unit.id}>{unit.title} — {unit.disposition ?? unit.state}</li>)}</ul></section>
       ) : null}
+      {record.operatorDetail ? <>
+        <section className="detail-card"><h2>Decision and evidence audit</h2>
+          <details><summary>Decisions ({record.operatorDetail.decisions.length})</summary><pre>{JSON.stringify(record.operatorDetail.decisions, null, 2)}</pre></details>
+          <details><summary>Evidence ({record.operatorDetail.evidence.length})</summary><pre>{JSON.stringify(record.operatorDetail.evidence, null, 2)}</pre></details>
+          <details><summary>GitHub readbacks ({record.operatorDetail.operations.length})</summary><pre>{JSON.stringify(record.operatorDetail.operations, null, 2)}</pre></details>
+          <details><summary>Model usage ({record.operatorDetail.modelRuns.length})</summary><pre>{JSON.stringify(record.operatorDetail.modelRuns, null, 2)}</pre></details>
+          <details><summary>Annotations ({record.operatorDetail.annotations.length})</summary><pre>{JSON.stringify(record.operatorDetail.annotations, null, 2)}</pre></details>
+        </section>
+        {csrfToken ? <TriageControls feedbackId={record.id} state={record.state} csrfToken={csrfToken} /> : null}
+      </> : null}
       {record.state === "QUEUED" && csrfToken ? <WithdrawButton feedbackId={record.id} csrfToken={csrfToken} /> : null}
     </AppShell>
   );

@@ -13,6 +13,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "retention:once": "tsx src/cli/retention-once.ts",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

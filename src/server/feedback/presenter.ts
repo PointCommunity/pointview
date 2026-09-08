@@ -27,7 +27,13 @@ export function presentFeedback(record: FeedbackDetail) {
       disposition: unit.disposition,
       github_url: unit.githubUrl,
     })),
-    operator_detail: null,
+    operator_detail: record.operatorDetail ? {
+      decisions: record.operatorDetail.decisions,
+      evidence: record.operatorDetail.evidence.map((item) => ({ ...item, capturedAt: item.capturedAt.toISOString() })),
+      operations: record.operatorDetail.operations.map((item) => ({ ...item, updatedAt: item.updatedAt.toISOString() })),
+      model_runs: record.operatorDetail.modelRuns.map((item) => ({ ...item, finishedAt: item.finishedAt?.toISOString() ?? null })),
+      annotations: record.operatorDetail.annotations.map((item) => ({ ...item, createdAt: item.createdAt.toISOString() })),
+    } : null,
   };
 }
 

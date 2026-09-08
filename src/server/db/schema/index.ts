@@ -239,6 +239,7 @@ export const feedbackUnits = pgTable("feedback_units", {
   id: uuid().primaryKey(),
   stableKey: text("stable_key").notNull().unique(),
   feedbackRecordId: uuid("feedback_record_id").notNull().references(() => feedbackRecords.id),
+  generation: integer().notNull().default(1),
   ordinal: smallint().notNull(),
   title: text().notNull(),
   summary: text().notNull(),
@@ -247,7 +248,7 @@ export const feedbackUnits = pgTable("feedback_units", {
   state: unitState().notNull().default("RESEARCHING"),
   createdAt: time("created_at").notNull().defaultNow(),
   terminalAt: time("terminal_at"),
-}, (table) => [uniqueIndex("feedback_units_record_ordinal").on(table.feedbackRecordId, table.ordinal)]);
+}, (table) => [uniqueIndex("feedback_units_record_generation_ordinal").on(table.feedbackRecordId, table.generation, table.ordinal)]);
 
 export const researchCaptures = pgTable("research_captures", {
   id: uuid().primaryKey(),

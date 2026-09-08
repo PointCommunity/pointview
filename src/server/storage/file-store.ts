@@ -74,5 +74,9 @@ export class FileAttachmentStore {
       if (!missing(error)) throw error;
     }
   }
-}
 
+  async probe(): Promise<void> {
+    await fs.mkdir(this.#root, { recursive: true, mode: 0o700 });
+    await fs.access(this.#root, fs.constants.R_OK | fs.constants.W_OK);
+  }
+}

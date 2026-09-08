@@ -108,6 +108,14 @@ alter table application_settings
   add constraint application_settings_model_profile_fk
   foreign key (model_profile_id) references model_profiles(id);
 
+insert into application_settings (
+  id, version, triage_paused, observed_schedule, raw_retention_days, risk_review_policy_version,
+  retrieval_limits, prompt_version, schema_version
+) values (
+  '018f4f6d-7c00-7000-8000-000000000001', 1, false, '0 3 * * * America/Chicago', 180,
+  'risk-review-v1', '{"maxEvidenceBytes":131072,"maxCandidateBodies":10}'::jsonb, 'prompt-v1', '1.1.0'
+) on conflict (version) do nothing;
+
 create table if not exists launch_nonces (
   id uuid primary key,
   source_app_id uuid not null references source_apps(id) on delete cascade,
@@ -250,6 +258,7 @@ create table if not exists feedback_units (
   id uuid primary key,
   stable_key text not null unique,
   feedback_record_id uuid not null references feedback_records(id),
+  generation integer not null default 1 check (generation > 0),
   ordinal smallint not null check (ordinal between 1 and 50),
   title text not null check (char_length(title) between 1 and 160),
   summary text not null check (char_length(summary) between 1 and 4000),
@@ -258,7 +267,7 @@ create table if not exists feedback_units (
   state unit_state not null default 'RESEARCHING',
   created_at timestamptz not null default now(),
   terminal_at timestamptz,
-  unique (feedback_record_id, ordinal),
+  unique (feedback_record_id, generation, ordinal),
   check (ordinal = 1 or split_reason is not null),
   check ((state = 'TERMINAL') = (terminal_at is not null))
 );

@@ -41,6 +41,19 @@ describeDatabase("account and audit persistence", () => {
     })).rejects.toThrow(/final active Owner/);
   });
 
+  it("audits an authorized optimistic account update", async () => {
+    const [pending] = await sql<{ id: string; version: number }[]>`select id, version from accounts where status = 'PENDING'`;
+    const [owner] = await sql<{ id: string }[]>`select id from accounts where role = 'OWNER'`;
+    const updated = await updateAccount(sql, {
+      actorRole: "OWNER", actorAccountId: owner.id,
+      correlationId: "018f4f6d-7c00-7000-8000-000000000039",
+      accountId: pending.id, expectedVersion: pending.version, role: "ADMIN", status: "ACTIVE",
+    });
+    expect(updated).toMatchObject({ role: "ADMIN", status: "ACTIVE", version: pending.version + 1 });
+    const [event] = await sql<{ action: string; targetId: string }[]>`select action, target_id as "targetId" from audit_events where action = 'account.updated'`;
+    expect(event).toEqual({ action: "account.updated", targetId: pending.id });
+  });
+
   it("persists a hash-linked event and lets PostgreSQL reject mutation", async () => {
     const event = await appendAuditEvent(sql, {
       id: "018f4f6d-7c00-7000-8000-000000000031",

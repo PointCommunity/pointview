@@ -52,6 +52,13 @@ export type FeedbackDetail = {
   rawDeleteAfter: Date | null;
   attachments: Array<{ id: string; mediaType: string; sizeBytes: number; width: number; height: number }>;
   units: Array<{ id: string; title: string; state: string; disposition: string | null; githubUrl: string | null }>;
+  operatorDetail?: {
+    decisions: Array<{ id: string; unitId: string; version: number; active: boolean; disposition: string; confidence: number; reasonCode: string; rationale: string; evidenceIds: string[]; state: string; governedMetadata: unknown }>;
+    evidence: Array<{ id: string; unitId: string; kind: string; sourceLocator: string; title: string; publisher: string; capturedAt: Date; applicability: string; facts: unknown; provenance: unknown }>;
+    operations: Array<{ id: string; decisionId: string; step: string; state: string; githubIssueNumber: number | null; readback: unknown; updatedAt: Date }>;
+    modelRuns: Array<{ id: string; unitId: string; provider: string; modelIdentifier: string; profileVersion: number; inputTokens: number | null; outputTokens: number | null; estimatedCostMicros: number | null; validationState: string; finishedAt: Date | null }>;
+    annotations: Array<{ id: string; kind: string; body: string; createdAt: Date; authorAccountId: string }>;
+  };
 };
 
 function normalizeFeedbackText(value: string): string {
@@ -281,6 +288,38 @@ export async function getFeedback(sql: postgres.Sql, input: RequestAccount & { f
     where fu.feedback_record_id = ${input.feedbackId}
     order by fu.ordinal
   `;
+  const operatorDetail = input.role === "ADMIN" || input.role === "OWNER" ? {
+    decisions: await sql<NonNullable<FeedbackDetail["operatorDetail"]>["decisions"]>`
+      select td.id, td.unit_id as "unitId", td.version, td.active, td.disposition, td.confidence::float8 as confidence,
+        td.reason_code as "reasonCode", td.rationale, td.evidence_ids as "evidenceIds", td.state,
+        td.governed_metadata as "governedMetadata"
+      from triage_decisions td join feedback_units fu on fu.id = td.unit_id
+      where fu.feedback_record_id = ${input.feedbackId} order by fu.generation, fu.ordinal, td.version
+    `,
+    evidence: await sql<NonNullable<FeedbackDetail["operatorDetail"]>["evidence"]>`
+      select rc.id, rc.unit_id as "unitId", rc.kind, rc.source_locator as "sourceLocator", rc.title, rc.publisher,
+        rc.captured_at as "capturedAt", rc.applicability, rc.facts, rc.provenance
+      from research_captures rc join feedback_units fu on fu.id = rc.unit_id
+      where fu.feedback_record_id = ${input.feedbackId} order by rc.captured_at, rc.id
+    `,
+    operations: await sql<NonNullable<FeedbackDetail["operatorDetail"]>["operations"]>`
+      select go.id, go.decision_id as "decisionId", go.step, go.state, go.github_issue_number as "githubIssueNumber",
+        go.readback_payload as readback, go.updated_at as "updatedAt"
+      from github_operations go join triage_decisions td on td.id = go.decision_id join feedback_units fu on fu.id = td.unit_id
+      where fu.feedback_record_id = ${input.feedbackId} order by go.created_at, go.id
+    `,
+    modelRuns: await sql<NonNullable<FeedbackDetail["operatorDetail"]>["modelRuns"]>`
+      select mr.id, mr.unit_id as "unitId", mr.provider, mr.model_identifier as "modelIdentifier",
+        mr.profile_version as "profileVersion", mr.input_tokens as "inputTokens", mr.output_tokens as "outputTokens",
+        mr.estimated_cost_micros::float8 as "estimatedCostMicros", mr.validation_state as "validationState", mr.finished_at as "finishedAt"
+      from model_runs mr join feedback_units fu on fu.id = mr.unit_id
+      where fu.feedback_record_id = ${input.feedbackId} order by mr.started_at, mr.id
+    `,
+    annotations: await sql<NonNullable<FeedbackDetail["operatorDetail"]>["annotations"]>`
+      select id, kind, body, created_at as "createdAt", author_account_id as "authorAccountId"
+      from feedback_annotations where feedback_record_id = ${input.feedbackId} order by created_at, id
+    `,
+  } : undefined;
   return {
     id: record.id,
     state: record.state,
@@ -296,7 +335,27 @@ export async function getFeedback(sql: postgres.Sql, input: RequestAccount & { f
     rawDeleteAfter: record.rawDeleteAfter,
     attachments,
     units,
+    ...(operatorDetail ? { operatorDetail } : {}),
   };
+}
+
+export async function appendFeedbackAnnotation(sql: postgres.Sql, input: RequestAccount & { feedbackId: string; kind: unknown; body: unknown; correlationId: string }) {
+  if (input.status !== "ACTIVE" || input.role === "USER") throw new FeedbackError("ACCESS_DENIED", "Only an Admin or Owner may annotate feedback", 403);
+  validId(input.feedbackId, "Feedback");
+  const parsed = z.object({ kind: z.enum(["CORRECTION", "OPERATIONAL"]), body: z.string().trim().min(1).max(4_000) }).safeParse({ kind: input.kind, body: input.body });
+  if (!parsed.success) throw new FeedbackError("ANNOTATION_INVALID", "Annotation kind or body is invalid", 400);
+  return sql.begin(async (tx) => {
+    const [record] = await tx<{ id: string }[]>`select id from feedback_records where id = ${input.feedbackId}`;
+    if (!record) throw new FeedbackError("FEEDBACK_NOT_FOUND", "Feedback was not found", 404);
+    const annotation = { id: newId(), feedbackRecordId: record.id, authorAccountId: input.accountId, ...parsed.data, createdAt: new Date() };
+    await tx`insert into feedback_annotations (id, feedback_record_id, author_account_id, kind, body, created_at) values (${annotation.id}, ${record.id}, ${input.accountId}, ${annotation.kind}, ${annotation.body}, ${annotation.createdAt})`;
+    await appendAuditEventInTransaction(tx, {
+      id: newId(), eventAt: annotation.createdAt.toISOString(), actorType: "ACCOUNT", actorId: input.accountId,
+      action: "feedback.annotation_added", targetType: "feedback_record", targetId: record.id, result: "SUCCESS",
+      correlationId: input.correlationId, safeMetadata: { kind: annotation.kind },
+    });
+    return annotation;
+  });
 }
 
 export async function authorizeAttachment(

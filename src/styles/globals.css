@@ -27,7 +27,7 @@ body {
 }
 
 a { color: inherit; }
-button, input, textarea { font: inherit; }
+button, input, textarea, select { font: inherit; }
 button, input[type="file"], input[type="checkbox"] { cursor: pointer; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 .skip-link {
@@ -160,12 +160,43 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
 .feedback-copy { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.65; }
 .attachment-grid { display: grid; gap: .65rem; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
 .attachment-grid a { display: grid; gap: .3rem; min-height: 64px; align-content: center; padding: .8rem; border: 1px solid var(--line); border-radius: .7rem; text-underline-offset: .2rem; }
+.attachment-grid img { width: 100%; height: auto; max-height: 20rem; object-fit: contain; border-radius: .45rem; background: #030a12; }
+.admin-table { display: grid; gap: .75rem; }
+.admin-row { display: grid; grid-template-columns: minmax(13rem, 1fr) repeat(2, minmax(8rem, .55fr)) auto; gap: 1rem; align-items: end; padding: 1rem; border: 1px solid var(--line); border-radius: .9rem; background: rgba(13, 26, 43, .84); }
+.admin-row > div, .admin-row label { display: grid; gap: .35rem; }
+.admin-row small { color: var(--muted); overflow-wrap: anywhere; }
+.admin-row label { color: var(--muted); font-size: .8rem; }
+.admin-row select { min-height: 44px; padding: .55rem; border: 1px solid #46617f; border-radius: .55rem; background: #07111e; color: var(--text); }
+.settings-form { display: grid; max-width: 52rem; gap: 1rem; }
+.settings-form fieldset { display: grid; gap: 1rem; margin: 0; padding: 1.2rem; border: 1px solid var(--line); border-radius: .9rem; background: rgba(13, 26, 43, .84); }
+.settings-form legend { padding: 0 .5rem; color: var(--accent); font-weight: 760; }
+.settings-form label:not(.privacy-check) { display: grid; gap: .35rem; color: var(--muted); font-size: .85rem; }
+.settings-form input, .settings-form select, .settings-form textarea { min-height: 44px; padding: .65rem; border: 1px solid #46617f; border-radius: .55rem; background: #07111e; color: var(--text); }
+.settings-form textarea { min-height: 8rem; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.settings-form small { color: var(--muted); }
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .75rem; margin-bottom: 1rem; }
+.metric-grid article { display: grid; gap: .35rem; padding: 1rem; border: 1px solid var(--line); border-radius: .8rem; background: rgba(13, 26, 43, .84); }
+.metric-grid strong { color: var(--accent); font-size: 1.5rem; overflow-wrap: anywhere; }
+.metric-grid span, .compact-list span { color: var(--muted); font-size: .82rem; }
+.compact-list { display: grid; gap: .7rem; margin: 0; padding: 0; list-style: none; }
+.compact-list li { display: grid; gap: .2rem; padding-bottom: .7rem; border-bottom: 1px solid var(--line); }
+.detail-card details { padding: .7rem 0; border-top: 1px solid var(--line); }
+.detail-card summary { cursor: pointer; color: var(--accent); }
+.detail-card pre { max-height: 28rem; overflow: auto; padding: .75rem; border-radius: .5rem; background: #030a12; color: #d8e5f5; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .76rem; }
+.inline-form { display: grid; gap: .75rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.inline-form label { display: grid; gap: .35rem; color: var(--muted); }
+.inline-form select, .inline-form textarea { min-height: 44px; padding: .65rem; border: 1px solid #46617f; border-radius: .55rem; background: #07111e; color: var(--text); }
+.inline-form textarea { min-height: 6rem; resize: vertical; }
+.source-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr)); }
+.json-editor { display: grid; gap: .45rem; margin-bottom: .75rem; color: var(--muted); }
+.json-editor textarea { min-height: 24rem; resize: vertical; padding: .75rem; border: 1px solid #46617f; border-radius: .55rem; background: #030a12; color: #d8e5f5; font: .78rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 @media (max-width: 720px) {
   .feature-grid { grid-template-columns: 1fr; }
   .hero { padding-top: 3.5rem; }
   .context-card { grid-template-columns: 1fr; }
   .record-list a { align-items: flex-start; }
+  .admin-row { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: no-preference) {

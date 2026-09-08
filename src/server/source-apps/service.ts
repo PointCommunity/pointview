@@ -232,3 +232,11 @@ export async function listSourceApps(sql: postgres.Sql, actor: RequestAccount): 
   const ids = await sql<{ id: string }[]>`select id from source_apps order by display_name, id`;
   return Promise.all(ids.map(({ id }) => readSource(sql, id)));
 }
+
+export async function listSourceAppHistory(sql: postgres.Sql, actor: RequestAccount) {
+  if (actor.status !== "ACTIVE" || actor.role !== "OWNER") throw new SourceAppError("ACCESS_DENIED", "Only an Owner may manage source apps", 403);
+  return sql<Array<{ id: string; sourceAppId: string; action: string; eventAt: Date; metadata: unknown }>>`
+    select id, target_id as "sourceAppId", action, event_at as "eventAt", safe_metadata as metadata
+    from audit_events where target_type = 'source_app' order by event_at desc, id desc limit 500
+  `;
+}

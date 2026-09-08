@@ -55,8 +55,9 @@ function validationFailure(error: unknown): boolean {
 
 async function existingOutcomes(sql: postgres.Sql, recordId: string): Promise<{ total: number; attention: number; outcomes: PersistedOutcome[] }> {
   const [counts] = await sql<{ total: number; attention: number }[]>`
-    select count(*)::int as total, count(*) filter (where state = 'NEEDS_ATTENTION')::int as attention
-    from feedback_units where feedback_record_id = ${recordId}
+    select count(*)::int as total, count(*) filter (where fu.state = 'NEEDS_ATTENTION')::int as attention
+    from feedback_units fu join triage_decisions td on td.unit_id = fu.id and td.active
+    where fu.feedback_record_id = ${recordId}
   `;
   const outcomes = await sql<PersistedOutcome[]>`
     select ${recordId}::text as "recordId", fu.id as "unitId", td.id as "decisionId", td.disposition,
@@ -90,15 +91,18 @@ async function persistPlan(
   const plan = result.proposedDecision;
   const outcomes: PersistedOutcome[] = [];
   await sql.begin(async (tx) => {
+    const [{ generation }] = await tx<{ generation: number }[]>`
+      select (coalesce(max(generation), 0) + 1)::int as generation from feedback_units where feedback_record_id = ${recordId}
+    `;
     for (const [index, unit] of plan.units.entries()) {
       const unitId = newId();
       const decisionId = newId();
       const primaryRunId = newId();
       const reviewRunId = result.review ? newId() : null;
       await tx`
-        insert into feedback_units (id, stable_key, feedback_record_id, ordinal, title, summary, kind_hint, split_reason, state)
+        insert into feedback_units (id, stable_key, feedback_record_id, generation, ordinal, title, summary, kind_hint, split_reason, state)
         values (
-          ${unitId}, ${digest(`${recordId}:${unit.unit_key}`)}, ${recordId}, ${index + 1}, ${unit.title}, ${unit.summary},
+          ${unitId}, ${digest(`${recordId}:${generation}:${unit.unit_key}`)}, ${recordId}, ${generation}, ${index + 1}, ${unit.title}, ${unit.summary},
           ${unit.kind}, ${unit.split_reason ?? null}, ${result.status === "READY" ? "APPLYING" : "NEEDS_ATTENTION"}
         )
       `;
