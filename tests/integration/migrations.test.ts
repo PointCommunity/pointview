@@ -31,6 +31,7 @@ describeDatabase("initial PostgreSQL migration", () => {
     for (const table of [
       "accounts",
       "source_apps",
+      "provider_connections",
       "feedback_records",
       "feedback_payloads",
       "feedback_leases",
@@ -82,8 +83,11 @@ describeDatabase("initial PostgreSQL migration", () => {
   it("is safe to run again after the migration is recorded", async () => {
     await expect(migrateUp(sql)).resolves.toBeUndefined();
     const rows = await sql<{ version: string; digest: string }[]>`
-      select version, digest from schema_migrations where version = '0001'
+      select version, digest from schema_migrations order by version
     `;
-    expect(rows).toEqual([{ version: "0001", digest: "pointview-initial-v1" }]);
+    expect(rows).toEqual([
+      { version: "0001", digest: "pointview-initial-v1" },
+      { version: "0002", digest: "pointview-provider-connections-v1" },
+    ]);
   });
 });

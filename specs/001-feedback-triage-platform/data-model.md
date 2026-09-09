@@ -10,7 +10,7 @@
 - Raw user material is isolated in deletable payload tables. Stable provenance, derived decisions, and audit events never duplicate raw text or image bytes.
 - Every mutable administrative row has `version`, `created_at`, `updated_at`, and optimistic-concurrency checks.
 - Every external operation has a stable idempotency key and correlation ID.
-- Secrets are referenced by external secret name/key; secret values are never stored in PostgreSQL.
+- Provider credentials are stored only as authenticated ciphertext encrypted under an external deployment key; plaintext is never stored in PostgreSQL or returned by an API.
 - Enum values are database-constrained and mirrored by Zod schemas.
 
 ## Identity and configuration
@@ -63,7 +63,15 @@ Public verification keys only: `source_app_id`, `kid`, algorithm fixed to `EdDSA
 
 ### `model_profiles`
 
-Stores provider name, model identifier, reasoning setting, maximum input/output limits, timeout, active flag, and external secret reference. Prompts and JSON schemas are referenced by immutable version/digest. No provider key is stored.
+Stores provider connection ID, model identifier selected from the authenticated saved catalog, reasoning setting, maximum input/output limits, timeout, active flag, and immutable prompt/schema versions and digests. No provider credential is duplicated here.
+
+### `provider_connections`
+
+One current row per supported provider (`OLLAMA_CLOUD`, `OPENAI_CODEX`). Fields include provider, lifecycle status (`DISCONNECTED`, `AUTHORIZING`, `CONNECTED`, `ERROR`), encrypted credential envelope, credential version, safe plan/account classification where supplied by the provider, validated model catalog, catalog digest, last verification time, safe failure code, optimistic version, and lifecycle timestamps.
+
+The encrypted envelope stores AES-256-GCM nonce, ciphertext, authentication tag, and encryption-key version. Associated data binds provider, row ID, and credential version so ciphertext cannot be moved between providers or records. A provider response, OAuth token, API key, or decrypted Codex credential file is never stored in model profiles, settings snapshots, audit metadata, logs, or browser state.
+
+Device-code login sessions are process-local and short-lived. PostgreSQL may retain only non-secret UX state (login ID, verification URL, user code, started/expiry time, and safe status). A web-process restart invalidates the session and the Owner starts again; it never converts an incomplete login into a connected provider.
 
 ## Launch and intake
 
@@ -159,7 +167,7 @@ Proves the all-status-except-Done screen: target Project revision/capture time, 
 
 ### `model_runs`
 
-Records provider/model/profile, prompt/schema/evidence-manifest versions, risk-review reason, start/end, usage counts/cost estimate, response ID if allowed, validation state, and output digest. Raw chain-of-thought and raw provider output are not stored; only schema-valid decision material and sanitized diagnostics are retained. API calls use `store: false`.
+Records provider/model/profile, prompt/schema/evidence-manifest versions, risk-review reason, start/end, usage counts/cost estimate, response ID if allowed, validation state, and output digest. Raw chain-of-thought and raw provider output are not stored; only schema-valid decision material and sanitized diagnostics are retained. PointView uses ephemeral Codex execution and does not request provider-side response retention from Ollama Cloud.
 
 ### `triage_decisions`
 

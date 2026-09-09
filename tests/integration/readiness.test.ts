@@ -24,14 +24,25 @@ describeDatabase("aggregate readiness", () => {
     expect(github).not.toHaveBeenCalled();
 
     const model = newId();
-    await sql`insert into model_profiles (id, provider, model_identifier, reasoning_effort, max_input_tokens, max_output_tokens, timeout_ms, active, secret_reference, prompt_version, prompt_digest, prompt_text, schema_version, schema_digest, schema_definition)
-      values (${model}, 'OPENAI', 'fixture', 'medium', 1000, 1000, 1000, true, 'op://pointview/openai', 'prompt-v1', ${"a".repeat(64)}, 'policy', '1.1.0', ${"b".repeat(64)}, '{}'::jsonb)`;
+    const provider = newId();
+    await sql`insert into provider_connections (id, provider, status, credential_envelope, credential_version, model_catalog)
+      values (${provider}, 'OLLAMA_CLOUD', 'CONNECTED', '{}'::jsonb, 1, ${sql.json([{
+        id: "fixture", displayName: "Fixture", reasoningEfforts: [], defaultReasoningEffort: null, inputModalities: ["text"],
+      }])})`;
+    await sql`insert into model_profiles (id, provider, model_identifier, reasoning_effort, max_input_tokens, max_output_tokens, timeout_ms, active, provider_connection_id, secret_reference, prompt_version, prompt_digest, prompt_text, schema_version, schema_digest, schema_definition)
+      values (${model}, 'OLLAMA_CLOUD', 'fixture', 'none', 1000, 1000, 1000, true, ${provider}, 'provider://OLLAMA_CLOUD', 'prompt-v1', ${"a".repeat(64)}, 'policy', '1.1.0', ${"b".repeat(64)}, '{}'::jsonb)`;
     await sql`update application_settings set model_profile_id = ${model} where superseded_at is null`;
     await sql`insert into source_apps (id, slug, display_name, enabled, github_owner, github_repo, github_project_node_id, github_project_number, github_installation_id, allowed_origins, return_url_prefixes, validation_status)
       values (${newId()}, 'ready', 'Ready', true, 'PointCommunity', 'pointview', 'PVT_expected', 4, 10, array['https://pointview.test'], array['https://pointview.test/'], 'VALID')`;
     const ready = await checkReadiness(sql, { storage: { probe: async () => undefined }, github });
     expect(ready.ready).toBe(true);
     expect(github).toHaveBeenCalledOnce();
+    await sql`update provider_connections set model_catalog = '[]'::jsonb where id = ${provider}`;
+    const stale = await checkReadiness(sql, { storage: { probe: async () => undefined }, github });
+    expect(stale.checks).toContainEqual({ name: "schedule", ok: false, code: "SCHEDULE_OR_MODEL_UNREADY" });
+    await sql`update provider_connections set model_catalog = ${sql.json([{
+      id: "fixture", displayName: "Fixture", reasoningEfforts: [], defaultReasoningEffort: null, inputModalities: ["text"],
+    }])} where id = ${provider}`;
     github.mockRejectedValueOnce(new Error("GitHub unavailable"));
     const failed = await checkReadiness(sql, { storage: { probe: async () => undefined }, github });
     expect(failed.checks).toContainEqual({ name: "github", ok: false, code: "GITHUB_CONFIGURATION_UNREADY" });

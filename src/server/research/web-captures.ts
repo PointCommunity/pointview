@@ -28,7 +28,7 @@ export async function persistWebSources(
         ${newId()}, ${input.unitId}, 'WEB', ${source.url}, ${source.title}, ${url.hostname}, ${capturedAt},
         'Returned by hosted web search for this decision run', ${sql.json(facts)},
         ${createHash("sha256").update(canonical(facts)).digest("hex")}, true,
-        ${sql.json({ adapter: "openai-responses-web-search", capturedSourceList: true })}
+        ${sql.json({ adapter: "provider-hosted-web-search", capturedSourceList: true })}
       )
       on conflict (unit_id, kind, source_locator) do nothing
     `;

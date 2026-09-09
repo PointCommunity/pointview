@@ -25,6 +25,7 @@ const ids = {
   operation: "018f4f6d-7c00-7000-8000-000000000702",
   batch: "018f4f6d-7c00-7000-8000-000000000800",
   profile: "018f4f6d-7c00-7000-8000-000000000900",
+  provider: "018f4f6d-7c00-7000-8000-000000000901",
 };
 
 const sql = postgres(databaseUrl, { max: 1 });
@@ -94,7 +95,7 @@ try {
   `;
   await sql`
     insert into model_runs (id, unit_id, provider, model_identifier, profile_version, prompt_version, schema_version, evidence_manifest_digest, started_at, finished_at, input_tokens, output_tokens, estimated_cost_micros, validation_state)
-    values (${ids.run}, ${ids.unit}, 'OPENAI', 'fixture-model', 1, 'prompt-v1', '1.1.0', 'manifest-digest', now(), now(), 120, 40, 25, 'VALID')
+    values (${ids.run}, ${ids.unit}, 'OLLAMA_CLOUD', 'fixture-ollama', 1, 'prompt-v1', '1.1.0', 'manifest-digest', now(), now(), 120, 40, 25, 'VALID')
   `;
   await sql`
     insert into triage_decisions (id, unit_id, disposition, confidence, reason_code, rationale, evidence_ids, state, terminal_at)
@@ -109,12 +110,22 @@ try {
     values (${ids.batch}, 'SCHEDULED', now(), 1, 'fixture-runner', 'COMPLETED', now(), 1, 1)
   `;
   await sql`
+    insert into provider_connections (
+      id, provider, status, credential_envelope, credential_version, plan_type, model_catalog,
+      catalog_digest, last_verified_at
+    ) values (
+      ${ids.provider}, 'OLLAMA_CLOUD', 'CONNECTED', ${sql.json({ version: 1, algorithm: "AES-256-GCM", nonce: "fixture", ciphertext: "fixture", authTag: "fixture" })},
+      1, 'Ollama Cloud', ${sql.json([{ id: "fixture-ollama", displayName: "Fixture Ollama", reasoningEfforts: [], defaultReasoningEffort: null, inputModalities: ["text"] }])},
+      'fixture-catalog-digest', now()
+    )
+  `;
+  await sql`
     insert into model_profiles (
       id, provider, model_identifier, reasoning_effort, max_input_tokens, max_output_tokens, timeout_ms,
-      active, secret_reference, prompt_version, prompt_digest, prompt_text, schema_version, schema_digest, schema_definition
+      active, provider_connection_id, secret_reference, prompt_version, prompt_digest, prompt_text, schema_version, schema_digest, schema_definition
     ) values (
-      ${ids.profile}, 'OPENAI', 'fixture-model', 'medium', 100000, 8000, 120000, true,
-      'op://pointview/openai/api-key', 'prompt-v1', 'prompt-digest', 'Fixture prompt', '1.1.0', 'schema-digest', ${sql.json({ type: "object" })}
+      ${ids.profile}, 'OLLAMA_CLOUD', 'fixture-ollama', 'none', 200000, 32000, 600000, true, ${ids.provider},
+      'provider://OLLAMA_CLOUD', 'prompt-v1', 'prompt-digest', 'Fixture prompt', '1.1.0', 'schema-digest', ${sql.json({ type: "object" })}
     )
   `;
   await sql`update application_settings set model_profile_id = ${ids.profile} where version = 1`;

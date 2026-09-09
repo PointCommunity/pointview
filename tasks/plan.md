@@ -2,13 +2,14 @@
 
 ## Overview
 
-The authoritative implementation plan is [`specs/001-feedback-triage-platform/plan.md`](../specs/001-feedback-triage-platform/plan.md). PointView is a private Next.js/PostgreSQL application with signed source provenance, safe private screenshots, daily singleton queue drainage, deterministic evidence/GitHub adapters, a credentialless model decision boundary, 180-day raw retention, and the PointGuide exact-candidate release lifecycle.
+The authoritative implementation plan is [`specs/001-feedback-triage-platform/plan.md`](../specs/001-feedback-triage-platform/plan.md). PointView is a private Next.js/PostgreSQL application with signed source provenance, safe private screenshots, daily singleton queue drainage, deterministic evidence/GitHub adapters, encrypted Owner-managed Ollama Cloud and Codex provider connections, 180-day raw retention, and the PointGuide exact-candidate release lifecycle.
 
 ## Architecture decisions
 
 - Source-app backends sign short-lived single-use EdDSA launch assertions; browsers cannot select or forge routing.
 - Kubernetes starts a daily Job, while PostgreSQL singleton/lease invariants guarantee one-at-a-time oldest-first drainage until empty.
 - Deterministic collectors and validators surround a strict-schema model call; the model has web search but no credentials or mutation tools.
+- The standard Owner UI connects Ollama Cloud or Codex, discovers available models, and selects one model without raw provider identifiers, secret references, JSON, prompts, schemas, or token/time-limit fields.
 - A private least-privilege GitHub App applies only merge comments or new Backlog Issues and proves idempotency through markers/readback.
 - Raw feedback/screenshots are erased 180 days after terminal triage; minimized decisions, evidence, operation proofs, and audit lineage remain.
 - PointGuide repository skills, Project fields, CI gates, Zot/Argo Canary, and same-digest Production promotion are adapted; knowledge/training are omitted.

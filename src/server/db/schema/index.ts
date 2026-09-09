@@ -32,6 +32,22 @@ export const decisionState = pgEnum("decision_state", [
 ]);
 export const operationState = pgEnum("operation_state", ["PENDING", "SENT", "CONFIRMED", "RETRYABLE", "FAILED"]);
 
+export const providerConnections = pgTable("provider_connections", {
+  id: uuid().primaryKey(),
+  provider: text().notNull().unique(),
+  status: text().notNull(),
+  credentialEnvelope: jsonb("credential_envelope"),
+  credentialVersion: integer("credential_version").notNull().default(0),
+  planType: text("plan_type"),
+  modelCatalog: jsonb("model_catalog").notNull(),
+  catalogDigest: text("catalog_digest"),
+  lastVerifiedAt: time("last_verified_at"),
+  failureCode: text("failure_code"),
+  version: integer().notNull().default(1),
+  createdAt: time("created_at").notNull().defaultNow(),
+  updatedAt: time("updated_at").notNull().defaultNow(),
+});
+
 export const accounts = pgTable("accounts", {
   id: uuid().primaryKey(),
   accessSubjectHash: text("access_subject_hash").notNull().unique(),
@@ -55,6 +71,7 @@ export const modelProfiles = pgTable("model_profiles", {
   maxOutputTokens: integer("max_output_tokens").notNull(),
   timeoutMs: integer("timeout_ms").notNull(),
   active: boolean().notNull().default(false),
+  providerConnectionId: uuid("provider_connection_id").references(() => providerConnections.id),
   secretReference: text("secret_reference").notNull(),
   promptVersion: text("prompt_version").notNull(),
   promptDigest: text("prompt_digest").notNull(),

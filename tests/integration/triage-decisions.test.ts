@@ -56,7 +56,7 @@ describeDatabase("persisted triage decision processing", () => {
     }),
   };
 
-  const modelProfile = { provider: "OPENAI", modelIdentifier: "fixture", profileVersion: 1, promptVersion: "1", schemaVersion: "1.1.0" };
+  const modelProfile = { provider: "OLLAMA_CLOUD", modelIdentifier: "fixture", profileVersion: 1, promptVersion: "1", schemaVersion: "1.1.0" };
 
   it("persists stable units and terminal decisions before draining an empty rerun without a model call", async () => {
     let modelCalls = 0;

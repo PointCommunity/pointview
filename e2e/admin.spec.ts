@@ -57,11 +57,65 @@ test("operator detail exposes minimized proof and append-only controls", async (
   await expect(page.getByText(/PRIVATE KEY|api-key-value|raw model output/)).toHaveCount(0);
 });
 
-test("settings are Owner-only and expose references rather than secret values", async ({ context, page }) => {
+test("settings explain provider setup and hide technical policy fields", async ({ context, page }) => {
   await authenticate(context, fixtureIds.owner, "OWNER");
   await page.goto("/admin/settings");
-  await expect(page.getByRole("heading", { level: 1, name: "Triage policy." })).toBeVisible();
-  await expect(page.getByLabel("Raw retention days")).toHaveValue("180");
-  await expect(page.getByLabel("External secret reference")).toHaveValue("op://pointview/openai/api-key");
-  await expect(page.getByText(/secret value/i)).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Set up automatic triage." })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Connect an AI service" })).toBeVisible();
+  await expect(page.getByText(/Ollama Cloud is connected|Connected · 1 models available/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign in with ChatGPT" })).toBeVisible();
+  await expect(page.getByLabel("AI model")).toHaveValue("OLLAMA_CLOUD::fixture-ollama");
+  await expect(page.getByLabel("Keep original feedback for")).toHaveValue("180");
+  await expect(page.getByText("This model is text-only. PointView will use screenshot details but will not send image files to it.")).toBeVisible();
+  await expect(page.getByText(/prompt text|schema text|token|timeout|secret reference|retrieval limits/i)).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
+test("settings provider errors use plain language and remain recoverable", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name === "mobile", "Provider mutation behavior is covered once; mobile layout is covered above.");
+  await authenticate(context, fixtureIds.owner, "OWNER");
+  await page.route("**/api/admin/providers/OLLAMA_CLOUD", async (route) => {
+    expect(route.request().method()).toBe("DELETE");
+    await route.fulfill({ status: 204 });
+  });
+  await page.route("**/api/admin/providers", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([
+      { provider: "OLLAMA_CLOUD", status: "DISCONNECTED", credentialConfigured: false, planType: null, models: [], lastVerifiedAt: null, failureCode: null, version: 2 },
+      { provider: "OPENAI_CODEX", status: "DISCONNECTED", credentialConfigured: false, planType: null, models: [], lastVerifiedAt: null, failureCode: null, version: 0 },
+    ]) });
+  });
+  await page.route("**/api/admin/providers/ollama", async (route) => {
+    expect(await route.request().postDataJSON()).toEqual({ apiKey: "not-a-real-key", expectedVersion: 2 });
+    await route.fulfill({ status: 400, contentType: "application/problem+json", body: JSON.stringify({ title: "Ollama Cloud did not accept that API key" }) });
+  });
+  await page.goto("/admin/settings");
+  await page.getByRole("button", { name: "Disconnect" }).click();
+  await expect(page.getByLabel("Ollama Cloud API key")).toBeVisible();
+  await page.getByLabel("Ollama Cloud API key").fill("not-a-real-key");
+  await page.getByRole("button", { name: "Connect Ollama Cloud" }).click();
+  await expect(page.getByRole("status")).toContainText("Ollama Cloud did not accept that API key");
+  await expect(page.getByRole("button", { name: "Connect Ollama Cloud" })).toBeEnabled();
+});
+
+test("ChatGPT sign-in presents a browser-safe device code", async ({ context, page }, testInfo) => {
+  test.skip(testInfo.project.name === "mobile", "Device authorization behavior is covered once; mobile layout is covered above.");
+  await authenticate(context, fixtureIds.owner, "OWNER");
+  await page.route("**/api/admin/providers/codex/device", async (route) => {
+    expect(await route.request().postDataJSON()).toEqual({ expectedVersion: 0 });
+    await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({
+      sessionId: "018f4f6d-7c00-7000-8000-000000000777",
+      verificationUrl: "https://auth.openai.com/codex/device",
+      userCode: "ABCD-1234",
+      expiresAt: "2026-09-09T06:00:00.000Z",
+    }) });
+  });
+  await page.route("**/api/admin/providers/codex/status", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ state: "WAITING" }) });
+  });
+  await page.goto("/admin/settings");
+  await page.getByRole("button", { name: "Sign in with ChatGPT" }).click();
+  await expect(page.getByText("ABCD-1234")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open ChatGPT sign-in" })).toHaveAttribute("href", "https://auth.openai.com/codex/device");
+  await expect(page.getByText("This page will update automatically after you approve access.")).toBeVisible();
 });

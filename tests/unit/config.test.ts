@@ -14,7 +14,7 @@ const valid = {
   GITHUB_APP_ID: "123",
   GITHUB_APP_INSTALLATION_ID: "456",
   GITHUB_APP_PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----",
-  OPENAI_API_KEY: "provider-secret",
+  POINTVIEW_CREDENTIAL_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"),
   POINTVIEW_SOURCE_REVISION: "abc123",
 };
 
@@ -23,6 +23,7 @@ describe("parseServerConfig", () => {
     const parsed = parseServerConfig(valid);
     expect(parsed.baseUrl.href).toBe("https://view.pointatx.org/");
     expect(parsed.github.appId).toBe(123);
+    expect(parsed.credentialEncryptionKey).toHaveLength(32);
     expect(parsed.triageWritesEnabled).toBe(false);
   });
 
@@ -33,9 +34,13 @@ describe("parseServerConfig", () => {
 
   it("does not include secret values in validation errors", () => {
     const secret = "do-not-leak-this-secret";
-    expect(() => parseServerConfig({ ...valid, OPENAI_API_KEY: "", SESSION_SECRET: secret })).toThrowError(
+    expect(() => parseServerConfig({ ...valid, POINTVIEW_CREDENTIAL_ENCRYPTION_KEY: secret, SESSION_SECRET: secret })).toThrowError(
       expect.not.objectContaining({ message: expect.stringContaining(secret) }),
     );
+  });
+
+  it("requires exactly one 256-bit provider credential encryption key", () => {
+    expect(() => parseServerConfig({ ...valid, POINTVIEW_CREDENTIAL_ENCRYPTION_KEY: Buffer.alloc(31).toString("base64") })).toThrow(/POINTVIEW_CREDENTIAL_ENCRYPTION_KEY/);
   });
 
   it("requires an explicit boolean string for the triage mutation boundary", () => {

@@ -10,6 +10,7 @@ import { sessionCookie } from "@/server/auth/session";
 import { serverConfig } from "@/server/config";
 import { readSettings } from "@/server/config/settings";
 import { sqlClient } from "@/server/db/client";
+import { listProviderConnections } from "@/server/providers/repository";
 
 export const metadata = { title: "PointView settings" };
 
@@ -20,5 +21,6 @@ export default async function SettingsPage() {
   const account = await authenticateSession(sqlClient(), cookieStore.get(sessionCookie.name)?.value, config.sessionSecret).catch(() => redirect("/"));
   if (account.role !== "OWNER") redirect("/feedback");
   const settings = await readSettings(sqlClient(), account);
-  return <AppShell><section className="page-heading compact"><p className="eyebrow">Owner controls</p><h1>Triage policy.</h1><p className="lede">Every save creates a new immutable policy version. Secrets stay in the external secret store.</p></section><SettingsAdmin initial={settings} csrfToken={cookieStore.get(csrfCookie.name)?.value ?? ""} /></AppShell>;
+  const connections = await listProviderConnections(sqlClient(), account);
+  return <AppShell><section className="page-heading compact"><p className="eyebrow">Owner controls</p><h1>Set up automatic triage.</h1><p className="lede">Connect an AI service, choose a model, and PointView handles the technical policy safely in the background.</p></section><SettingsAdmin initial={settings} initialConnections={connections} csrfToken={cookieStore.get(csrfCookie.name)?.value ?? ""} /></AppShell>;
 }

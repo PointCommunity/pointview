@@ -18,7 +18,7 @@ Build and operate PointView, the private contextual-feedback intake and research
 
 - Cloudflare Access authenticates; the application database authorizes.
 - The first valid identity becomes the approved Owner transactionally. Every later account starts Pending.
-- Approved Users submit and view only their own feedback. Admins review operations and manage non-Owner accounts. Only Owners manage source apps, GitHub installation mappings, external secret references, model/prompt/review policy, retention, triage pause, and Owner membership.
+- Approved Users submit and view only their own feedback. Admins review operations and manage non-Owner accounts. Only Owners manage source apps, GitHub installation mappings, encrypted model-provider connections and selection, model/prompt/review policy, retention, triage pause, and Owner membership.
 - The final active Owner cannot be demoted or suspended. Never trust forwarded identity headers from direct-origin traffic.
 - Raw feedback and normalized screenshots are private and retained for 180 days after every derived unit becomes terminal. An audited retention job then deletes raw content while minimized evidence, decisions, GitHub proofs, tombstones, and audit records remain.
 - Submitters may withdraw only their own queued, unleased records. Never silently capture a screen or accept video, audio, archives, executables, or arbitrary documents.

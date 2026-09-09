@@ -17,7 +17,14 @@ const schema = z.object({
   GITHUB_APP_ID: z.coerce.number().int().positive(),
   GITHUB_APP_INSTALLATION_ID: z.coerce.number().int().positive(),
   GITHUB_APP_PRIVATE_KEY: z.string().includes("PRIVATE KEY"),
-  OPENAI_API_KEY: z.string().min(1),
+  POINTVIEW_CREDENTIAL_ENCRYPTION_KEY: z.string().transform((value, context) => {
+    const decoded = Buffer.from(value, "base64");
+    if (decoded.byteLength !== 32 || decoded.toString("base64") !== value) {
+      context.addIssue({ code: "custom", message: "must be one canonical base64-encoded 256-bit key" });
+      return z.NEVER;
+    }
+    return decoded;
+  }),
   POINTVIEW_SOURCE_REVISION: z.string().min(1).max(128),
   POINTVIEW_TRIAGE_WRITES_ENABLED: z.enum(["true", "false"]).default("false").transform((value) => value === "true"),
 });
@@ -31,7 +38,7 @@ export type ServerConfig = {
   access: { teamDomain: URL; audience: string };
   attachmentRoot: string;
   github: { appId: number; installationId: number; privateKey: string };
-  openAiApiKey: string;
+  credentialEncryptionKey: Uint8Array;
   sourceRevision: string;
   triageWritesEnabled: boolean;
 };
@@ -56,7 +63,7 @@ export function parseServerConfig(environment: Record<string, string | undefined
       installationId: value.GITHUB_APP_INSTALLATION_ID,
       privateKey: value.GITHUB_APP_PRIVATE_KEY,
     },
-    openAiApiKey: value.OPENAI_API_KEY,
+    credentialEncryptionKey: value.POINTVIEW_CREDENTIAL_ENCRYPTION_KEY,
     sourceRevision: value.POINTVIEW_SOURCE_REVISION,
     triageWritesEnabled: value.POINTVIEW_TRIAGE_WRITES_ENABLED,
   };

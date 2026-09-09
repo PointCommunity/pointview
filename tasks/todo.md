@@ -8,6 +8,7 @@ The authoritative, acceptance-criteria-bearing checklist is [`specs/001-feedback
 - [x] T021–T029: Daily sequential research and decisions
 - [x] T030–T036: Traceable GitHub outcomes
 - [x] T037–T044: Operations, controls, and retention
+- [x] T056–T060: Provider connections, model discovery, and guided settings UX
 - [ ] T045–T052: Governed candidate and Canary delivery
 - [ ] T053–T054: Cross-cutting final audit and human review
 - [ ] T055: Separately approved Production promotion and closure

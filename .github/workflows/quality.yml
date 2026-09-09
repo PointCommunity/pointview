@@ -97,7 +97,7 @@ jobs:
       GITHUB_APP_ID: "1"
       GITHUB_APP_INSTALLATION_ID: "1"
       GITHUB_APP_PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----\nci-only-not-a-real-key\n-----END PRIVATE KEY-----"
-      OPENAI_API_KEY: ci-only-not-a-real-key
+      POINTVIEW_CREDENTIAL_ENCRYPTION_KEY: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=
       POINTVIEW_SOURCE_REVISION: ci
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

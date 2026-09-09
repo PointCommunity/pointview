@@ -43,6 +43,7 @@ COPY --from=build --chown=pointview:pointview /workspace/node_modules ./node_mod
 COPY --from=build --chown=pointview:pointview /workspace/package.json /workspace/package-lock.json /workspace/tsconfig.json ./
 COPY --from=build --chown=pointview:pointview /workspace/src ./src
 COPY --from=build --chown=pointview:pointview /workspace/migrations ./migrations
+COPY --from=build --chown=pointview:pointview /workspace/specs/001-feedback-triage-platform/contracts ./specs/001-feedback-triage-platform/contracts
 COPY --from=build --chown=pointview:pointview /workspace/packages ./packages
 COPY --from=build --chown=pointview:pointview /workspace/scripts/container-entrypoint.sh ./scripts/container-entrypoint.sh
 
