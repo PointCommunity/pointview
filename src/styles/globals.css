@@ -70,6 +70,29 @@ button, input[type="file"], input[type="checkbox"] { cursor: pointer; }
 .primary-nav { margin-left: auto; }
 .primary-nav a { display: inline-flex; min-height: 44px; align-items: center; padding: 0 .5rem; color: var(--muted); text-underline-offset: .25rem; }
 .primary-nav + .environment-badge { margin-left: .5rem; }
+.administration-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin-top: .65rem;
+  padding: .45rem;
+  border: 1px solid var(--line);
+  border-radius: .85rem;
+  background: rgba(7, 17, 30, .66);
+}
+.administration-nav a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  padding: .55rem .8rem;
+  border-radius: .55rem;
+  color: var(--muted);
+  font-size: .9rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.administration-nav a:hover { background: rgba(19, 36, 58, .9); color: var(--text); }
+.administration-nav a[aria-current="page"] { background: #173451; color: var(--accent); }
 
 .hero { max-width: 54rem; padding: clamp(4rem, 11vw, 8rem) 0 clamp(3rem, 8vw, 6rem); }
 .eyebrow { margin: 0 0 1rem; color: var(--accent); font-size: .78rem; font-weight: 780; letter-spacing: .16em; text-transform: uppercase; }

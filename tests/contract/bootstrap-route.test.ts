@@ -36,7 +36,7 @@ describe("POST /bootstrap", () => {
     }));
 
     expect(response.status).toBe(303);
-    expect(response.headers.get("location")).toBe("https://view.pointatx.org/admin/source-apps");
+    expect(response.headers.get("location")).toBe("https://view.pointatx.org/admin/settings");
     const cookies = response.headers.getSetCookie().join("\n");
     expect(cookies).toContain("__Host-pointview_session=");
     expect(cookies).toContain("__Host-pointview_csrf=");
@@ -52,7 +52,7 @@ describe("POST /bootstrap", () => {
     }));
 
     expect(response.status).toBe(303);
-    expect(response.headers.get("location")).toBe("https://view.pointatx.org/admin/source-apps");
+    expect(response.headers.get("location")).toBe("https://view.pointatx.org/admin/settings");
   });
 
   it("rejects missing Access authentication and non-Owner accounts without setting a session", async () => {

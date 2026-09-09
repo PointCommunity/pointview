@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       createSession({ accountId: account.id, role: account.role, status: account.status }, config.sessionSecret),
       Promise.resolve(createCsrfToken()),
     ]);
-    const response = NextResponse.redirect(new URL("/admin/source-apps", config.baseUrl), 303);
+    const response = NextResponse.redirect(new URL("/admin/settings", config.baseUrl), 303);
     response.cookies.set(sessionCookie.name, session, sessionCookie.options);
     response.cookies.set(csrfCookie.name, csrf, csrfCookie.options);
     response.headers.set("cache-control", "no-store");

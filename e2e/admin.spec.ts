@@ -34,6 +34,33 @@ test("Owner source controls show validation and history without secrets", async 
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
+test("Owner administration makes AI provider setup discoverable", async ({ context, page }) => {
+  await authenticate(context, fixtureIds.owner, "OWNER");
+  await page.goto("/admin/source-apps");
+
+  const providerLink = page.getByRole("link", { name: "AI providers" });
+  await expect(providerLink).toBeVisible();
+  await expect(providerLink).toHaveAttribute("href", "/admin/settings");
+  await providerLink.click();
+
+  await expect(page).toHaveURL(/\/admin\/settings$/);
+  await expect(page.getByRole("heading", { level: 2, name: "Connect an AI service" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
+test("Admin navigation does not advertise Owner-only controls", async ({ context, page }) => {
+  await authenticate(context, fixtureIds.admin, "ADMIN");
+  await page.goto("/admin/operations");
+
+  await expect(page.getByRole("navigation", { name: "Administration" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Accounts" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Operations" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("link", { name: "AI providers" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Source apps" })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+});
+
 test("operations distinguish queue, attention, completion, usage, and rate-limit state", async ({ context, page }) => {
   await authenticate(context, fixtureIds.admin, "ADMIN");
   await page.goto("/admin/operations");

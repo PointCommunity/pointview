@@ -20,5 +20,5 @@ export default async function AccountsPage() {
   const account = await authenticateSession(sqlClient(), cookieStore.get(sessionCookie.name)?.value, config.sessionSecret).catch(() => redirect("/"));
   if (account.role === "USER") redirect("/feedback");
   const accounts = await listAccounts(sqlClient(), account);
-  return <AppShell><section className="page-heading compact"><p className="eyebrow">Administration</p><h1>Account access.</h1><p className="lede">Approve, suspend, or assign roles. Only Owners can change Owner membership.</p></section><AccountAdmin initialAccounts={accounts} csrfToken={cookieStore.get(csrfCookie.name)?.value ?? ""} actorRole={account.role} /></AppShell>;
+  return <AppShell administration={{ current: "accounts", role: account.role }}><section className="page-heading compact"><p className="eyebrow">Administration</p><h1>Account access.</h1><p className="lede">Approve, suspend, or assign roles. Only Owners can change Owner membership.</p></section><AccountAdmin initialAccounts={accounts} csrfToken={cookieStore.get(csrfCookie.name)?.value ?? ""} actorRole={account.role} /></AppShell>;
 }
