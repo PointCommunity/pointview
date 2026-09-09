@@ -2,7 +2,7 @@
 
 import { execFileSync } from "node:child_process";
 
-import { assertRuntimeContract, assertStorageContract } from "../../../../scripts/verify-live-contract.mjs";
+import { assertMigrationContract, assertRuntimeContract, assertStorageContract } from "../../../../scripts/verify-live-contract.mjs";
 
 const [, , track, sourceSha, imageDigest, homelabSha] = process.argv;
 if (!track || !sourceSha || !imageDigest || !homelabSha || process.argv.length !== 6) {
@@ -73,9 +73,8 @@ try {
   const healthJson = JSON.parse(healthPayload);
   assertRuntimeContract({ healthJson, sourceRevision: runtimeSource, expectedSourceRevision: sourceSha, uid: runtimeUid });
 
-  const expectedMigrations = "0001\tpointview-initial-v1";
   const appliedMigrations = run(["exec", "-n", namespace, postgresPod.metadata.name, "-c", "main", "--", "psql", "-U", "pointview", "-d", "pointview", "-At", "-F", "\t", "-c", "SELECT version,digest FROM schema_migrations ORDER BY version"]);
-  if (expectedMigrations !== appliedMigrations) throw new Error("database migration versions or digests do not match the running image");
+  const migrationCount = assertMigrationContract(appliedMigrations);
 
   const cronJobs = json(["get", "cronjobs", "-n", namespace, "-l", `app.kubernetes.io/instance=${appName}`, "-o", "json"]).items;
   const triage = cronJobs.find((job) => job.metadata.name.includes("triage"));
@@ -136,7 +135,7 @@ try {
   console.log(`homelab_revision=${actualRevision}`);
   console.log(`web_pod=${webPod.metadata.name}`);
   console.log(`image_digest=${imageDigest}`);
-  console.log(`migrations=${expectedMigrations.split("\n").filter(Boolean).length}`);
+  console.log(`migrations=${migrationCount}`);
   console.log(`cronjobs=${triage.metadata.name},${retention.metadata.name}`);
   console.log(`route=${publicUrl}`);
   console.log("cloudflare_access=protected");

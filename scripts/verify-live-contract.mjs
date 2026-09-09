@@ -1,3 +1,15 @@
+export const expectedMigrationState = [
+  ["0001", "pointview-initial-v1"],
+  ["0002", "pointview-provider-connections-v1"],
+].map((entry) => entry.join("\t")).join("\n");
+
+export function assertMigrationContract(appliedMigrations) {
+  if (appliedMigrations !== expectedMigrationState) {
+    throw new Error("database migration versions or digests do not match the running image");
+  }
+  return expectedMigrationState.split("\n").length;
+}
+
 export function assertRuntimeContract({ healthJson, sourceRevision, expectedSourceRevision, uid }) {
   const health = healthJson.health;
   const readiness = healthJson.ready;
