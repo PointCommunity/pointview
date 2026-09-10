@@ -10,7 +10,7 @@ type NotificationHandler = (method: string, params: unknown) => void;
 
 function codexEntrypoint(): string {
   const require = createRequire(import.meta.url);
-  return join(dirname(require.resolve("@openai/codex/package.json")), "bin", "codex.js");
+  return join(dirname(require.resolve(/* webpackIgnore: true */ "@openai/codex/package.json")), "bin", "codex.js");
 }
 
 export class CodexAppServer implements CodexRpc {

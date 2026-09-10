@@ -13,6 +13,7 @@
     "dev": "next dev",
     "e2e:prepare": "tsx scripts/e2e-prepare.ts",
     "build": "next build",
+    "bundle:check": "node scripts/audit-codex-server-bundle.mjs",
     "start": "next start",
     "db:migrate": "tsx src/cli/migrate-up.ts",
     "retention:once": "tsx src/cli/retention-once.ts",
@@ -30,7 +31,7 @@
     "ci:check": "node scripts/audit-ci-alignment.mjs",
     "docs:check": "html-validate 'docs/*.html' && node scripts/audit-docs.mjs",
     "verify-live:fixture": "node scripts/verify-live-fixture.mjs",
-    "check": "npm run lint && npm run typecheck && npm test && npm run test:coverage && npm run build && npm run docs:check && npm run verify-live:fixture && npm run skills:check && npm run ci:check"
+    "check": "npm run lint && npm run typecheck && npm test && npm run test:coverage && npm run build && npm run bundle:check && npm run docs:check && npm run verify-live:fixture && npm run skills:check && npm run ci:check"
   },
   "dependencies": {
     "@openai/codex-sdk": "0.153.4",

@@ -12,6 +12,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  serverExternalPackages: ["@openai/codex"],
   poweredByHeader: false,
   reactStrictMode: true,
   experimental: { serverActions: { bodySizeLimit: "12mb" } },
@@ -21,4 +22,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-
