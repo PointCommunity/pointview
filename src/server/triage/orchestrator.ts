@@ -23,6 +23,53 @@ function mergeWebSources(...groups: WebSource[][]): WebSource[] {
   return [...byUrl.values()].sort((left, right) => left.url.localeCompare(right.url));
 }
 
+const correctionPolicy = "The previous structured response could not pass deterministic validation. " +
+  "Return one corrected response using only the supplied evidence and eligible targets. Ensure unit keys are sequential, " +
+  "all evidence IDs and source URLs are captured, dispositions match mutations, and required risk flags and registered labels are exact. " +
+  "Do not mention or repeat the previous response.";
+
+async function decideValidated(
+  model: DecisionModel,
+  request: DecisionRequest,
+  validationContext: DecisionValidationContext,
+): Promise<{ result: DecisionResult; decision: TriageDecision; sources: WebSource[] }> {
+  const first = await model.decide(request);
+  const firstSources = mergeWebSources(first.webSources);
+  try {
+    return {
+      result: first,
+      decision: validateTriageDecision(first.decision, {
+        ...validationContext,
+        webSourceUrls: new Set(firstSources.map((source) => source.url)),
+      }),
+      sources: firstSources,
+    };
+  } catch (error) {
+    if (error instanceof Error && error.message === "Decision contains unsafe or privacy-sensitive content") throw error;
+    const repaired = await model.decide({
+      ...request,
+      systemPolicy: `${request.systemPolicy}\n${correctionPolicy}`,
+    });
+    const repairedSources = mergeWebSources(repaired.webSources);
+    const decision = validateTriageDecision(repaired.decision, {
+      ...validationContext,
+      webSourceUrls: new Set(repairedSources.map((source) => source.url)),
+    });
+    return {
+      result: {
+        ...repaired,
+        usage: {
+          inputTokens: first.usage.inputTokens + repaired.usage.inputTokens,
+          outputTokens: first.usage.outputTokens + repaired.usage.outputTokens,
+          totalTokens: first.usage.totalTokens + repaired.usage.totalTokens,
+        },
+      },
+      decision,
+      sources: repairedSources,
+    };
+  }
+}
+
 function authoritySignature(decision: TriageDecision): string {
   return JSON.stringify(decision.units.map((unit) => {
     const base = { key: unit.unit_key, kind: unit.kind, disposition: unit.disposition, mutation: unit.mutation.kind };
@@ -43,12 +90,12 @@ export class DecisionOrchestrator {
   constructor(readonly primaryModel: DecisionModel, readonly reviewModel: DecisionModel) {}
 
   async decide(input: OrchestrationInput): Promise<OrchestrationResult> {
-    const primary = await this.primaryModel.decide({ systemPolicy: input.systemPolicy, evidencePacket: input.evidencePacket, images: input.images });
-    const primarySources = mergeWebSources(primary.webSources);
-    const primaryDecision = validateTriageDecision(primary.decision, {
-      ...input.validationContext,
-      webSourceUrls: new Set(primarySources.map((source) => source.url)),
-    });
+    const primaryResult = await decideValidated(this.primaryModel, {
+      systemPolicy: input.systemPolicy,
+      evidencePacket: input.evidencePacket,
+      images: input.images,
+    }, input.validationContext);
+    const { result: primary, decision: primaryDecision, sources: primarySources } = primaryResult;
     const reasons = [...new Set(primaryDecision.units.flatMap((unit) => reviewReasons({
       disposition: unit.disposition,
       kind: unit.kind,
@@ -59,17 +106,14 @@ export class DecisionOrchestrator {
       return { status: "READY", decision: primaryDecision, proposedDecision: primaryDecision, primary, review: null, reviewReasons: [], webSources: primarySources, failureCode: null };
     }
 
-    const review = await this.reviewModel.decide({
+    const reviewResult = await decideValidated(this.reviewModel, {
       systemPolicy: `${input.systemPolicy}\nIndependently review the proposed decision for: ${reasons.join(", ")}. ` +
         "Use the same evidence and schema. Do not broaden routing, target, labels, fields, or mutation authority.",
       evidencePacket: { ...input.evidencePacket, proposedDecisionForIndependentReview: primaryDecision },
       images: input.images,
-    });
-    const webSources = mergeWebSources(primarySources, review.webSources);
-    const reviewDecision = validateTriageDecision(review.decision, {
-      ...input.validationContext,
-      webSourceUrls: new Set(webSources.map((source) => source.url)),
-    });
+    }, input.validationContext);
+    const { result: review, decision: reviewDecision, sources: reviewSources } = reviewResult;
+    const webSources = mergeWebSources(primarySources, reviewSources);
     if (authoritySignature(primaryDecision) !== authoritySignature(reviewDecision)) {
       return {
         status: "NEEDS_ATTENTION",
