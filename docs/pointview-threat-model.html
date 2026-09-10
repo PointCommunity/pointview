@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -26,7 +26,7 @@
 </head>
 <body>
   <main>
-    <p>Confirmed security architecture · 2026-09-07</p>
+    <p>Confirmed security architecture · updated 2026-09-08</p>
     <h1>PointView threat model</h1>
     <p class="lede">PointView is an Access-protected homelab application that accepts confidential product feedback and optional screenshots, uses a model to organize evidence, and can create or enrich GitHub Issues. It is not intended to receive payment-card, health, or other regulated records.</p>
 
@@ -37,7 +37,7 @@
         <li><strong>Confirmed:</strong> submissions may contain confidential product material and incidental personal information, but regulated records are prohibited.</li>
         <li><strong>Confirmed:</strong> initial mutation targets are selected repositories and private Projects in the PointCommunity GitHub organization.</li>
         <li><strong>Confirmed:</strong> Canary and Production are distinct homelab Kubernetes applications with separate data, storage, secrets, and domains.</li>
-        <li><strong>Out of scope:</strong> attacks requiring control of Cloudflare, GitHub, OpenAI, 1Password, or cluster administration are supply-chain/administrator compromise scenarios; PointView still limits blast radius through least privilege and immutable evidence.</li>
+        <li><strong>Out of scope:</strong> attacks requiring control of Cloudflare, GitHub, Ollama, OpenAI, 1Password, or cluster administration are supply-chain/administrator compromise scenarios; PointView still limits blast radius through least privilege and immutable evidence.</li>
       </ul>
     </section>
 
@@ -49,7 +49,7 @@
         <li><strong>Browser → upload decoder → private storage:</strong> multipart limits, magic/decode/dimension/pixel validation, re-encoding, generated keys, private retrieval.</li>
         <li><strong>Web/Job process → PostgreSQL:</strong> TLS/private network, least-privilege database role, parameterized queries, constraints, advisory lock, append-only audit.</li>
         <li><strong>Triage collector → GitHub:</strong> allowlisted repository/Project, short-lived GitHub App installation token, paginated reads, bounded writes, rate-limit handling.</li>
-        <li><strong>Evidence packet → OpenAI Responses API:</strong> redacted bounded evidence, strict schema, <code>store:false</code>, hosted web search only, no PointView credentials or mutation tools.</li>
+        <li><strong>Evidence packet → selected model provider:</strong> redacted bounded evidence goes to Ollama Cloud or an isolated ChatGPT/Codex process. Credentials are encrypted at rest and never enter model-visible content. Codex receives an empty ephemeral home/workspace with shell, skills, apps, connectors, MCP, and project rules disabled; Ollama uses fixed cloud endpoints and deterministic output validation.</li>
         <li><strong>Release workstation → Zot → Gitea/Argo → cluster:</strong> clean committed source, immutable AMD64 digest, exact-candidate promotion and readback.</li>
       </ol>
     </section>
@@ -57,7 +57,7 @@
     <section class="card">
       <h2>Assets and entry points</h2>
       <div class="grid">
-        <div><h3>High-value assets</h3><ul><li>Raw feedback and normalized screenshots</li><li>Source provenance and routing</li><li>GitHub App and provider secret references</li><li>Issue/Project integrity</li><li>Decision and audit lineage</li><li>Release image and GitOps identity</li></ul></div>
+        <div><h3>High-value assets</h3><ul><li>Raw feedback and normalized screenshots</li><li>Source provenance and routing</li><li>GitHub App and encrypted provider credentials</li><li>Issue/Project integrity</li><li>Decision and audit lineage</li><li>Release image and GitOps identity</li></ul></div>
         <div><h3>Untrusted entry points</h3><ul><li><code>POST /launch</code></li><li>Feedback multipart form</li><li>Record and attachment identifiers</li><li>Admin JSON mutations</li><li>GitHub Issues, PRs, repository content</li><li>Web-search results and model output</li><li>Job environment/configuration and external API responses</li></ul></div>
       </div>
     </section>
@@ -76,7 +76,7 @@
           <tr><td>TM-07</td><td class="medium">Medium</td><td>Denial of service: decompression bomb, repeated submissions/downloads, or continuously growing queue exhausts CPU/storage/model budget.</td><td>Slow or unavailable service and unexpected spend.</td><td>Edge/application quotas, byte/dimension/pixel/decode time limits, 429/Retry-After, private retrieval throttles, cost metrics, Owner pause, storage alerts.</td></tr>
           <tr><td>TM-08</td><td class="medium">Medium</td><td>Tampering: concurrent/duplicate CronJobs or expired lease recovery processes a record twice.</td><td>Duplicate decisions and GitHub operations.</td><td>CronJob Forbid, PostgreSQL advisory singleton, one-active-lease constraint, heartbeats, stable unit/operation keys, idempotent recovery.</td></tr>
           <tr><td>TM-09</td><td class="medium">Medium</td><td>Elevation: Pending/User/Admin account invokes Owner function or removes the final Owner.</td><td>Integration takeover or service lockout.</td><td>Database-backed role/function policy, optimistic concurrency, transactional first/final Owner invariants, CSRF, audit and matrix tests.</td></tr>
-          <tr><td>TM-10</td><td class="medium">Medium</td><td>SSRF/lateral movement: attacker-controlled locator causes PointView to fetch internal or arbitrary network resources.</td><td>Homelab reconnaissance or credential service access.</td><td>No generic URL fetcher; source targets from validated GitHub installation; hosted web search occurs outside PointView; exact return allowlist; Kubernetes egress allowlist.</td></tr>
+          <tr><td>TM-10</td><td class="medium">Medium</td><td>SSRF/lateral movement: attacker-controlled locator causes PointView to fetch internal or arbitrary network resources.</td><td>Homelab reconnaissance or credential service access.</td><td>No generic URL fetcher; source targets come from the validated GitHub installation; web search uses fixed provider-hosted endpoints; exact return allowlist; Kubernetes egress allowlist.</td></tr>
           <tr><td>TM-11</td><td class="medium">Medium</td><td>Repudiation/tampering: operator or fault changes raw material, evidence, or logs after decision.</td><td>Unreliable provenance and inability to audit.</td><td>Insert-only payload until deletion, append-only annotations, content digests, immutable decision versions, hash-linked audit events, restricted log access.</td></tr>
           <tr><td>TM-12</td><td class="medium">Medium</td><td>Tampering/disclosure: Canary and Production share storage, secrets, database, or a rebuilt artifact.</td><td>Production data loss/leak or unreviewed code release.</td><td>Separate resources and URLs, exact tree/image digest, no Production rebuild, Argo readback, migration/rollback rehearsal, whole-cluster verification.</td></tr>
           <tr><td>TM-13</td><td class="low">Low</td><td>Information disclosure: errors, metrics, or audit data reveal email, IP, paths, tokens, raw model output, or feedback.</td><td>Limited operational data exposure.</td><td>Problem Details, correlation IDs, data minimization, sanitization/log-injection tests, no raw User-Agent/IP by default, role-limited operator views.</td></tr>

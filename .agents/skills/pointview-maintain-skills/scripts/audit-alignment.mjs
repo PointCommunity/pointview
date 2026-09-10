@@ -72,9 +72,14 @@ requireText(policy, "Homelab data is critical", ".agents/pointview-pipeline-poli
 
 const canaryRelease = read(".agents/skills/pointview-release-canary/SKILL.md");
 const productionRelease = read(".agents/skills/pointview-release-production/SKILL.md");
+const canaryReleaseReference = read(".agents/skills/pointview-pipeline/references/canary-release.md");
+const liveVerifier = read(".agents/skills/pointview-release-canary/scripts/verify-live.mjs");
 requireText(canaryRelease, "local development workstation", ".agents/skills/pointview-release-canary/SKILL.md");
 requireText(canaryRelease, "never on a Kubernetes node", ".agents/skills/pointview-release-canary/SKILL.md");
 requireText(canaryRelease, "check-chart-version.mjs", ".agents/skills/pointview-release-canary/SKILL.md");
+requireText(canaryReleaseReference, "`POINTVIEW_SOURCE_REVISION` build argument", ".agents/skills/pointview-pipeline/references/canary-release.md");
+requireText(liveVerifier, '"printenv", "POINTVIEW_SOURCE_REVISION"', ".agents/skills/pointview-release-canary/scripts/verify-live.mjs");
+rejectText(liveVerifier, '"printenv", "SOURCE_REVISION"', ".agents/skills/pointview-release-canary/scripts/verify-live.mjs");
 requireText(productionRelease, "Purge obsolete unreferenced PointView image manifests from Zot", ".agents/skills/pointview-release-production/SKILL.md");
 requireText(productionRelease, "restorable database backup or snapshot", ".agents/skills/pointview-release-production/SKILL.md");
 for (const [owner, content] of [
@@ -150,6 +155,9 @@ for (const relativePath of [
   ".agents/skills/pointview-release-canary/scripts/check-candidate.mjs",
   ".agents/skills/pointview-release-canary/scripts/check-chart-version.mjs",
   ".agents/skills/pointview-release-canary/scripts/verify-live.mjs",
+  "scripts/verify-live.mjs",
+  "scripts/verify-live-contract.mjs",
+  "scripts/verify-live-fixture.mjs",
   ".agents/skills/pointview-pipeline-health/scripts/audit-project.mjs",
 ]) {
   read(relativePath);

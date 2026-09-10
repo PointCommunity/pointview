@@ -8,7 +8,7 @@ Before mutation, verify the PointView branch is clean, GitHub Quality and AMD64 
 
 ## Package and registry
 
-Export the exact PointView head with `git archive` into a temporary directory and build it locally using Podman with `--platform linux/amd64` and `SOURCE_REVISION` set to the full source SHA. Tag Zot with the seven-character SHA. Push, then query the registry or pull by digest to resolve and prove the immutable digest. Do not rely on a mutable local image ID.
+Export the exact PointView head with `git archive` into a temporary directory and build it locally using Podman with `--platform linux/amd64` and the `POINTVIEW_SOURCE_REVISION` build argument set to the full source SHA. Tag Zot with the seven-character SHA. Push, then query the registry or pull by digest to resolve and prove the immutable digest. Do not rely on a mutable local image ID.
 
 Smoke the published artifact with disposable PostgreSQL and private attachment storage. Verify all migrations, `/api/health`, `/api/ready`, non-root UID, source revision, the writes-disabled triage command, the retention command, security headers, and clean teardown. No source-app private key, GitHub token, or provider key may appear in the image or smoke-test output.
 
@@ -22,8 +22,8 @@ Refresh and wait for `pointview-canary`. Verify:
 
 - Argo is Synced and Healthy at the expected homelab revision.
 - Migration completed and PostgreSQL migration names/digests exactly match the running image.
-- Web runs the exact registry digest as UID 1000 with zero restarts; triage and retention Job templates reference that same digest.
-- Liveness and readiness pass; readiness confirms migrations, database, attachment storage, source registry, and configured GitHub integration without making a model call; runtime `SOURCE_REVISION` matches the candidate.
+- Web runs the exact registry digest as UID 10001 with zero restarts; triage and retention Job templates reference that same digest.
+- Liveness and readiness pass; readiness confirms migrations, database, attachment storage, source registry, and configured GitHub integration without making a model call; runtime `POINTVIEW_SOURCE_REVISION` matches the candidate.
 - The triage CronJob is daily, uses `concurrencyPolicy: Forbid` and `America/Chicago`, and a controlled empty run performs no model or GitHub mutation. Retention is separately scheduled and cannot acquire a triage lease.
 - Logs and recent events show no unexpected errors or warnings.
 - Canary ingress, TLS, DNS, and unauthenticated Cloudflare Access redirect behave correctly.

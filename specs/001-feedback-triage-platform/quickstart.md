@@ -9,7 +9,7 @@ This is the implementation and acceptance-test path for the approved design. Com
 - A private writable attachment directory outside the web root
 - A test Cloudflare Access assertion fixture accepted only in `NODE_ENV=test`
 - An isolated GitHub test repository/Project or recorded API fixtures
-- An OpenAI test key for opt-in live smoke tests; normal tests use deterministic fixtures
+- An Ollama Cloud test key and/or a disposable ChatGPT/Codex test account for opt-in live smoke tests; normal tests use deterministic fixtures
 
 ## Expected local commands
 

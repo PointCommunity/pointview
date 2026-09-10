@@ -18,7 +18,7 @@ Build and operate PointView, the private contextual-feedback intake and research
 
 - Cloudflare Access authenticates; the application database authorizes.
 - The first valid identity becomes the approved Owner transactionally. Every later account starts Pending.
-- Approved Users submit and view only their own feedback. Admins review operations and manage non-Owner accounts. Only Owners manage source apps, GitHub installation mappings, external secret references, model/prompt/review policy, retention, triage pause, and Owner membership.
+- Approved Users submit and view only their own feedback. Admins review operations and manage non-Owner accounts. Only Owners manage source apps, GitHub installation mappings, encrypted model-provider connections and selection, model/prompt/review policy, retention, triage pause, and Owner membership.
 - The final active Owner cannot be demoted or suspended. Never trust forwarded identity headers from direct-origin traffic.
 - Raw feedback and normalized screenshots are private and retained for 180 days after every derived unit becomes terminal. An audited retention job then deletes raw content while minimized evidence, decisions, GitHub proofs, tombstones, and audit records remain.
 - Submitters may withdraw only their own queued, unleased records. Never silently capture a screen or accept video, audio, archives, executables, or arbitrary documents.
@@ -78,6 +78,8 @@ Build and operate PointView, the private contextual-feedback intake and research
 
 # This is NOT the Next.js you know
 
-This version has breaking changes. Before writing Next.js code, read the relevant installed guide under `node_modules/next/dist/docs/`; heed deprecations. This block may be maintained by `next dev`.
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->

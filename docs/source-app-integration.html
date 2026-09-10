@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>PointView source application integration</title>
+  <link rel="stylesheet" href="pointview-docs.css">
+</head>
+<body>
+<a class="skip-link" href="#content">Skip to content</a>
+<header><p class="eyebrow">PointView integration guide</p><h1>Source application integration</h1><p>How a private product links users into PointView without asking them to choose GitHub metadata.</p><nav aria-label="Documentation"><ul><li><a href="architecture.html">Architecture</a></li><li><a aria-current="page" href="source-app-integration.html">Source integration</a></li><li><a href="operations.html">Operations</a></li><li><a href="privacy-and-retention.html">Privacy</a></li></ul></nav></header>
+<main id="content">
+  <section aria-labelledby="owner-bootstrap"><h2 id="owner-bootstrap">0. Establish the initial Owner</h2><p>After Cloudflare Access protects the deployment, the first authenticated administrator uses <strong>Owner administration</strong> on the PointView landing page. PointView verifies the signed Access assertion, creates exactly one active Owner transactionally, and issues an administration session only to an active Owner. This path never creates a session for Pending Users or non-Owners and does not replace signed source launches for feedback intake.</p></section>
+  <section aria-labelledby="register"><h2 id="register">1. Register the source</h2><p>An Owner creates a disabled, versioned registration with the immutable slug, display name, exact GitHub owner/repository, private Project node ID and number, GitHub App installation ID, governed area labels, HTTPS origins, return URL prefixes, and Ed25519 public keys. PointView validates repository access, Project identity/schema, and required labels before enablement.</p></section>
+  <section aria-labelledby="sign"><h2 id="sign">2. Sign on the source backend</h2><p>Use <code>packages/launch-sdk</code> on the trusted server. Never put a private signing key in browser JavaScript. Each assertion is audience-bound, expires within five minutes, and carries a cryptographically random unique nonce.</p><table tabindex="0" aria-label="Signed launch assertion claims"><thead><tr><th>Claim</th><th>Requirement</th></tr></thead><tbody>
+    <tr><td><code>iss</code> and <code>source_app</code></td><td>Exact registered source slug</td></tr><tr><td><code>aud</code></td><td>Configured PointView audience</td></tr><tr><td><code>iat</code>, <code>exp</code></td><td>Current time and no more than five minutes of validity</td></tr><tr><td><code>jti</code></td><td>Unique, unpredictable, single-use nonce</td></tr><tr><td>Context</td><td>Environment, location, screen name, app version, source revision, and allowlisted return URL</td></tr>
+  </tbody></table></section>
+  <section aria-labelledby="post"><h2 id="post">3. POST the assertion</h2><p>Render a form with method <code>POST</code>, action <code>https://pointview.eaglepass.io/launch</code> (or the Canary URL during integration testing), and exactly one field named <code>launch_token</code>. A user gesture may submit it. Do not place assertions in URLs, analytics, logs, referrers, or persistent browser storage.</p></section>
+  <section aria-labelledby="ux"><h2 id="ux">4. Preserve user context</h2><ul><li>Label the link “Send feedback” and explain that the current screen context is included.</li><li>PointView renders verified source, environment, route, screen, version, and revision as read-only.</li><li>The user enters feedback and optional screenshots only.</li><li>After submission or cancellation, PointView returns only to an allowlisted source URL.</li></ul></section>
+  <section aria-labelledby="rotate"><h2 id="rotate">5. Rotate safely</h2><p>Add a new public key and deploy the matching source private key before retiring the old key. Keep the overlap longer than the maximum assertion lifetime. Registration changes create a new version; queued records remain bound to the version captured at intake.</p></section>
+  <section class="warning" aria-labelledby="failure"><h2 id="failure">Fail closed</h2><p>Unknown keys, forged or replayed nonces, expired tokens, wrong audience, disabled sources, mismatched origin, unsafe return URLs, and changed source mappings are errors. Do not fall back to URL parameters or user-selected repository fields.</p></section>
+</main>
+<footer><p>Integration owners must keep private signing keys and GitHub configuration outside source-controlled client code.</p></footer>
+</body>
+</html>

@@ -1,12 +1,9 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://pointview.eaglepass.io/contracts/triage-decision.v1.schema.json",
-  "title": "PointView Triage Decision v1",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "record_summary", "units"],
   "properties": {
-    "schema_version": { "const": "1.0.0" },
+    "schema_version": { "const": "1.1.0" },
     "record_summary": { "type": "string", "minLength": 1, "maxLength": 1200 },
     "units": {
       "type": "array",
@@ -15,7 +12,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["unit_key", "title", "summary", "kind", "disposition", "confidence", "reason_code", "rationale", "evidence_ids", "risk_flags", "mutation"],
+        "required": ["unit_key", "title", "summary", "kind", "split_reason", "disposition", "confidence", "reason_code", "rationale", "evidence_ids", "risk_flags", "mutation"],
         "properties": {
           "unit_key": { "type": "string", "pattern": "^unit-[1-9][0-9]*$" },
           "title": { "type": "string", "minLength": 1, "maxLength": 160 },
@@ -30,16 +27,14 @@
             "type": "array",
             "minItems": 1,
             "maxItems": 40,
-            "uniqueItems": true,
             "items": { "type": "string", "pattern": "^ev_[A-Za-z0-9_-]{8,80}$" }
           },
           "risk_flags": {
             "type": "array",
-            "uniqueItems": true,
             "items": { "enum": ["NEW_ISSUE", "LOW_CONFIDENCE", "SECURITY", "PRIVACY", "MULTIPLE_MATCHES", "ACTIVE_ISSUE_MATCH", "MIXED_FEEDBACK"] }
           },
           "mutation": {
-            "oneOf": [
+            "anyOf": [
               {
                 "type": "object",
                 "additionalProperties": false,
@@ -52,7 +47,24 @@
                     "type": "array",
                     "minItems": 1,
                     "maxItems": 20,
-                    "items": { "type": "string", "minLength": 1, "maxLength": 2000 }
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["text", "evidence_ids", "source_urls"],
+                      "properties": {
+                        "text": { "type": "string", "minLength": 1, "maxLength": 2000 },
+                        "evidence_ids": {
+                          "type": "array",
+                          "maxItems": 20,
+                          "items": { "type": "string", "pattern": "^ev_[A-Za-z0-9_-]{8,80}$" }
+                        },
+                        "source_urls": {
+                          "type": "array",
+                          "maxItems": 20,
+                          "items": { "type": "string", "pattern": "^https://" }
+                        }
+                      }
+                    }
                   },
                   "scope_impact": { "type": "string", "minLength": 1, "maxLength": 2000 }
                 }
@@ -75,7 +87,24 @@
                     "type": "array",
                     "minItems": 1,
                     "maxItems": 30,
-                    "items": { "type": "string", "minLength": 1, "maxLength": 2000 }
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["text", "evidence_ids", "source_urls"],
+                      "properties": {
+                        "text": { "type": "string", "minLength": 1, "maxLength": 2000 },
+                        "evidence_ids": {
+                          "type": "array",
+                          "maxItems": 20,
+                          "items": { "type": "string", "pattern": "^ev_[A-Za-z0-9_-]{8,80}$" }
+                        },
+                        "source_urls": {
+                          "type": "array",
+                          "maxItems": 20,
+                          "items": { "type": "string", "pattern": "^https://" }
+                        }
+                      }
+                    }
                   },
                   "scope": {
                     "type": "array",
@@ -104,7 +133,6 @@
                   "area_labels": {
                     "type": "array",
                     "minItems": 1,
-                    "uniqueItems": true,
                     "items": { "type": "string", "pattern": "^area:[a-z0-9-]+$" }
                   },
                   "priority": { "enum": ["P0", "P1", "P2", "P3"] },

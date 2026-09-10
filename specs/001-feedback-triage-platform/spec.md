@@ -5,11 +5,14 @@
 **Status**: Clarified — ready for planning
 **Input**: Build a separately hosted feedback application that automatically captures source-app context, stores raw feedback and screenshots, researches each submission, and safely merges, creates, splits, or considers GitHub Issues on a schedule.
 
+**Provider and usability amendment (2026-09-08)**: PointView does not use the OpenAI Platform API. Owners connect Ollama Cloud with an API key and/or connect OpenAI Codex with the official ChatGPT OAuth device-code flow. PointView discovers the models available to each connected account and presents those models in a guided triage-model picker. Provider credentials are entered or authorized only through the Owner web UI, encrypted at rest, never returned after submission, and never exposed to model-visible context. The standard settings experience uses plain-language controls; prompt, schema, token, timeout, and retrieval internals are governed application defaults rather than raw text or JSON fields.
+
 ## Assumptions
 
 - PointView will be a private `PointCommunity/pointview` repository and use a private organization Project titled `PointView` with PointGuide's Status, Priority, Impact, and Effort fields.
 - PointView will use PointGuide's first-login Owner and later-account Pending model, with User, Admin, and Owner roles; PointGuide's Trainer role and all knowledge/training features are excluded.
 - Registered source apps may target different PointCommunity repositories and Projects. The PointView Project governs PointView's own development, while feedback is routed to the registered source app's repository and Project.
+- Source repositories may be public or private. Repository visibility is evidence, not an activation condition; exact repository identity, GitHub App authorization, Project validation, and governed labels remain required.
 - Source context is asserted by a short-lived signed launch token produced by the source app. Unverified query parameters or referrer headers are never treated as trusted provenance.
 - GitHub receives a privacy-minimized research summary and protected PointView record link, not raw screenshots or unnecessary submitter identity.
 
@@ -82,6 +85,9 @@ Admins can review submissions, research evidence, split units, decisions, GitHub
 2. **Given** an Admin, **When** they inspect a record, **Then** they can see raw feedback, safe attachment previews, research citations, decisions, retries, and GitHub outcomes but cannot change Owner-only secrets or agent policy.
 3. **Given** an Owner, **When** they update a source-app registration, model profile, GitHub installation mapping, retention policy, or triage pause, **Then** the change is versioned and audit logged without exposing secret values.
 4. **Given** a stuck lease, rate limit, provider outage, invalid model output, GitHub drift, or partial mutation, **When** recovery runs, **Then** PointView retries safely or moves the record to Needs Attention with precise non-secret evidence.
+5. **Given** an Owner, **When** they open settings, **Then** they see guided Ollama Cloud and OpenAI Codex connection cards, connection health, and a model picker instead of provider identifiers, secret references, raw JSON, raw prompts, or raw schemas.
+6. **Given** one or both providers are connected, **When** models are refreshed, **Then** PointView shows only models reported by that authenticated provider, groups them by provider, identifies image-input support when known, and allows exactly one available model to be selected for triage.
+7. **Given** an Owner starts Codex sign-in, **When** PointView receives the official device-code response, **Then** it shows the verification URL and user code, polls only the matching login, stores the completed Codex credential encrypted, and never sends OAuth tokens to the browser.
 
 ---
 
@@ -110,6 +116,9 @@ PointView changes follow the same governed Issue-to-Canary-to-Production path as
 - A launch token is replayed, source-app configuration changes mid-session, or the target repository/Project becomes unavailable.
 - GitHub accepts a mutation but the network response is lost.
 - A model returns malformed output, cites evidence it was not given, follows prompt injection, or recommends a mutation outside the registered target.
+- Ollama Cloud returns syntactically valid JSON that does not conform to the triage schema, because its cloud service does not currently enforce structured outputs.
+- A Codex device login expires, is cancelled, completes after a web-process restart, or refreshes its credential during a scheduled run.
+- A previously selected model disappears from a provider's current authenticated catalog.
 - The queue grows faster than the configured schedule can drain it.
 
 ## Requirements
@@ -117,8 +126,8 @@ PointView changes follow the same governed Issue-to-Canary-to-Production path as
 ### Functional Requirements
 
 - **FR-001**: PointView MUST authenticate through Cloudflare Access and authorize through its own database.
-- **FR-002**: The first valid identity MUST become the approved Owner transactionally; later identities MUST begin Pending.
-- **FR-003**: Approved Users MUST be able to submit feedback and view only their own submissions; Admins MUST be able to review operational records and manage non-Owner accounts; Owners MUST exclusively manage integration mappings and external secret references, model/prompt policy, source apps, triage pause, retention, and Owner membership. The daily CronJob schedule MUST remain deployment-controlled and MUST NOT give the web application cluster mutation credentials.
+- **FR-002**: The first valid identity MUST become the approved Owner transactionally; later identities MUST begin Pending. An Owner-administration POST protected by a valid Cloudflare Access assertion MUST provide the initial Owner session without requiring a source app to exist first; it MUST NOT create a session for non-Owners.
+- **FR-003**: Approved Users MUST be able to submit feedback and view only their own submissions; Admins MUST be able to review operational records and manage non-Owner accounts; Owners MUST exclusively manage integration mappings, encrypted provider connections, triage-model selection, source apps, triage pause, retention, and Owner membership. The daily CronJob schedule MUST remain deployment-controlled and MUST NOT give the web application cluster mutation credentials.
 - **FR-004**: The final active Owner MUST NOT be demoted or suspended.
 - **FR-005**: PointView MUST exclude PointGuide knowledge repositories, corpus indexing, evidence Q&A, training sessions, and learning-proposal functionality.
 - **FR-006**: Each registered source app MUST define an immutable identifier, display name, target GitHub repository, target private Project, allowed origins, enabled state, and rotating launch-verification keys.
@@ -135,7 +144,7 @@ PointView changes follow the same governed Issue-to-Canary-to-Production path as
 - **FR-017**: PointView MAY consult Done/closed work only as historical evidence and MUST NOT merge new feedback into a Done Issue without a new explicitly governed workflow.
 - **FR-018**: External research MUST prefer current primary authorities, record URL, title, publisher, applicability, capture time, and content digest, and make unresolved product-specific facts explicit.
 - **FR-019**: Every substantive claim in an Issue proposal or merge summary MUST map to captured evidence; feedback itself MUST be labeled user evidence, not objective proof.
-- **FR-020**: The model MUST receive only a bounded, redacted evidence packet and MUST run without GitHub, database, provider, filesystem, or cluster credentials and without mutation tools.
+- **FR-020**: The model MUST receive only a bounded, redacted evidence packet and MUST run without GitHub, database, provider, or cluster credentials and without mutation tools. Ollama receives only the explicit chat request. Codex runs in a disposable empty workspace with read-only sandboxing, no repository mount, no MCP servers or repository rules, no inherited application secrets, and ephemeral thread state; its managed OAuth credential is supplied only to the isolated Codex runtime.
 - **FR-021**: Model output MUST conform to a versioned schema and be rejected if it contains unsupported citations, unknown repositories/Projects, invalid dispositions, unsafe content, or ambiguous mappings.
 - **FR-022**: Each unit MUST end in exactly one disposition: `MERGED`, `CREATED`, or `CONSIDERED`; a split submission MUST preserve parent/child traceability across all units.
 - **FR-023**: `MERGED` MUST identify exactly one eligible non-Done Issue and add a structured, privacy-minimized, idempotent research update without changing its Status, scope, assignee, or unrelated metadata.
@@ -156,6 +165,11 @@ PointView changes follow the same governed Issue-to-Canary-to-Production path as
 - **FR-037**: Automated triage MUST NOT move a target Issue's development Status, assign implementation ownership, create or change a development branch or pull request, run source implementation, invoke an app's review/release skill, merge code, deploy, close an Issue, or set Done.
 - **FR-038**: Only an explicit human Project Manager instruction, interpreted under the target application's own repository pipeline, MAY begin or advance development work on a triaged Issue.
 - **FR-039**: PointView MUST enforce deployment-edge and application-level rate/resource limits on launch, feedback submission, attachment retrieval, administrative mutations, and other abuse-sensitive endpoints using trusted account/source keys where available; throttled responses MUST use `429` with `Retry-After`, and limits MUST NOT depend solely on attacker-controlled headers.
+- **FR-040**: PointView MUST support Ollama Cloud through `https://ollama.com/api` with Bearer authentication, authenticated model discovery, bounded non-streaming chat calls, JSON-only prompting, deterministic schema validation, and bounded repair retries. PointView MUST NOT rely on Ollama Cloud to enforce structured output.
+- **FR-041**: PointView MUST support OpenAI Codex through the pinned Codex runtime, official ChatGPT OAuth device-code flow, authenticated model discovery, and non-interactive schema-constrained execution. PointView MUST NOT use or accept an OpenAI Platform API key.
+- **FR-042**: Provider credentials MUST be encrypted with authenticated encryption under a deployment-supplied 256-bit key, stored without plaintext or browser-readable recovery, decrypted only into a private temporary runtime, zeroed/deleted on completion where practical, and rotated or removed through audited Owner-only actions.
+- **FR-043**: The settings UI MUST provide plain-language provider connection, connection-test, disconnect, model refresh, model selection, pause, and retention controls. Raw prompts, JSON schemas, retrieval JSON, secret references, token ceilings, millisecond timeouts, and provider identifiers MUST NOT appear in the standard form.
+- **FR-044**: Selecting a model MUST be server-validated against the latest saved authenticated provider catalog. A missing, disconnected, unhealthy, or no-longer-advertised selected model MUST make triage readiness fail closed without making a model call or GitHub mutation.
 
 ### Key Entities
 

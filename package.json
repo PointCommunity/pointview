@@ -3,12 +3,66 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
   "engines": {
     "node": ">=22"
   },
   "scripts": {
+    "dev": "next dev",
+    "e2e:prepare": "tsx scripts/e2e-prepare.ts",
+    "build": "next build",
+    "bundle:check": "node scripts/audit-codex-server-bundle.mjs",
+    "start": "next start",
+    "db:migrate": "tsx src/cli/migrate-up.ts",
+    "retention:once": "tsx src/cli/retention-once.ts",
+    "triage:once": "tsx src/cli/triage-once.ts",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:integration": "vitest run tests/integration tests/contract/settings.test.ts --no-file-parallelism",
+    "security:check": "npm run test:security && npm audit --omit=dev --audit-level=high",
+    "test:security": "vitest run tests/security",
     "skills:check": "node .agents/skills/pointview-maintain-skills/scripts/audit-alignment.mjs",
     "project:check": "node .agents/skills/pointview-pipeline-health/scripts/audit-project.mjs",
-    "check": "npm run skills:check && npm run project:check"
+    "ci:check": "node scripts/audit-ci-alignment.mjs",
+    "docs:check": "html-validate 'docs/*.html' && node scripts/audit-docs.mjs",
+    "verify-live:fixture": "node scripts/verify-live-fixture.mjs",
+    "check": "npm run lint && npm run typecheck && npm test && npm run test:coverage && npm run build && npm run bundle:check && npm run docs:check && npm run verify-live:fixture && npm run skills:check && npm run ci:check"
+  },
+  "dependencies": {
+    "@openai/codex-sdk": "0.153.4",
+    "@prometheus-io/client": "0.16.1",
+    "ajv": "8.20.0",
+    "drizzle-orm": "0.45.2",
+    "jose": "6.2.12",
+    "next": "16.3.4",
+    "pino": "10.3.1",
+    "postgres": "3.4.9",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "server-only": "0.0.1",
+    "sharp": "0.35.4",
+    "tsx": "4.23.13",
+    "uuid": "14.0.2",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.63.0",
+    "@types/node": "26.5.0",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "@vitest/coverage-v8": "5.0.0",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.4",
+    "happy-dom": "20.14.0",
+    "html-validate": "11.15.0",
+    "typescript": "5.9.3",
+    "vitest": "5.0.0",
+    "yaml": "2.9.0"
   }
 }

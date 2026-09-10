@@ -1,5 +1,27 @@
 # Research: PointView Feedback Triage Platform
 
+## Provider authentication and model discovery amendment (2026-09-08)
+
+**Decision**: Remove the OpenAI Platform API integration. Support two independently optional Owner-managed connections: Ollama Cloud API-key authentication and OpenAI Codex managed ChatGPT OAuth through the official device-code flow. Use authenticated provider discovery for the UI model list; never accept a free-form model identifier as the normal path.
+
+**Current primary-source evidence**:
+
+- Ollama documents `https://ollama.com/api` as the cloud base URL, Bearer API-key authentication, `GET /api/tags` for available models, `POST /api/show` for model capabilities, and `POST /api/chat` for inference and reasoning-depth control. Ollama also documents that Cloud currently does not support structured outputs, so PointView uses an explicit JSON-only prompt, omits the unsupported `format` field, and retains deterministic schema validation plus one bounded repair rather than treating provider output as trusted. [Ollama Cloud](https://docs.ollama.com/cloud) · [Ollama model details](https://docs.ollama.com/api/show) · [Ollama chat](https://docs.ollama.com/api/chat) · [Ollama structured outputs](https://docs.ollama.com/capabilities/structured-outputs)
+- OpenAI documents Codex app-server as the supported integration surface for rich clients, including `chatgptDeviceCode` login, a verification URL and user code owned by the frontend UX, login completion notifications, managed token refresh, and `model/list` discovery with reasoning and modality capabilities. [Codex app-server](https://developers.openai.com/codex/app-server)
+- OpenAI documents non-interactive Codex execution for scheduled jobs and schema-constrained final output. PointView will pin the runtime and use an empty read-only workspace with no inherited application credentials, MCP servers, repository rules, or persistent conversation history. [Codex non-interactive mode](https://developers.openai.com/codex/noninteractive)
+
+**Credential storage decision**: Provider credentials are encrypted in PostgreSQL with AES-256-GCM under a deployment-injected encryption key. The UI can therefore connect providers without cluster credentials or direct 1Password access. The root encryption key remains an external deployment secret; provider credentials never appear in API responses, logs, audit metadata, model input, GitHub content, or image layers. Codex credentials are materialized only in a mode-0700 temporary `CODEX_HOME` for the lifetime of an app-server or non-interactive invocation and are re-encrypted after Codex refreshes them.
+
+**UX decision**: Replace the raw model/prompt/schema/retrieval form with a guided page: provider connection cards, visible health and last-check state, device-code sign-in steps, a provider-grouped model select, a short quality setting where supported, triage pause, and retention. Prompt/schema/retrieval/token/timeout settings remain versioned governed defaults in source and persistence, but are not editable in the standard interface.
+
+**Alternatives rejected**:
+
+- OpenAI Platform API keys: explicitly excluded by the product decision.
+- Browser-side OAuth token handling: rejected because Codex app-server can own and refresh the OAuth session without exposing tokens to the browser.
+- Plaintext provider secrets on a shared volume or in PostgreSQL: rejected because a database or storage read would immediately disclose reusable credentials.
+- Kubernetes/1Password mutation from the web application: rejected because it would require cluster or vault mutation authority and make ordinary provider setup operationally complex.
+- Free-form provider/model fields: rejected because they are error-prone for non-technical Owners and bypass authenticated capability discovery.
+
 **Date**: 2026-09-07
 **Scope**: Architecture and operating decisions needed to implement the approved product specification. Product-specific behavior remains governed by `spec.md`; this file records implementation evidence and rejected alternatives.
 
@@ -16,7 +38,7 @@
 
 ## Application stack
 
-**Decision**: Use a single TypeScript application on Node.js 22 with Next.js 16 App Router, React 19, PostgreSQL 17, Drizzle ORM, Zod, JOSE, Sharp, the OpenAI JavaScript SDK, Vitest, Playwright, and axe-core. Pin compatible versions in the lockfile rather than floating ranges.
+**Decision**: Use a single TypeScript application on Node.js 22 with Next.js 16 App Router, React 19, PostgreSQL 17, Drizzle ORM, Zod, JOSE, Sharp, Ajv, the pinned Codex SDK/runtime, Vitest, Playwright, and axe-core. Use direct HTTPS for Ollama Cloud. Pin compatible versions in the lockfile rather than floating ranges.
 
 **Rationale**: This follows PointGuide's proven homelab runtime and verification shape while adding only the image-normalization and bounded model-client capabilities PointView needs. A single application image can serve authenticated web/API traffic and expose separate `triage:once` and `retention:once` commands for Kubernetes Jobs.
 
@@ -85,13 +107,13 @@
 
 ## Model boundary and external research
 
-**Decision**: Define a provider-neutral `TriageModel` interface with an initial OpenAI Responses API adapter. Use strict structured output, `store: false`, a bounded redacted evidence packet, optional normalized screenshot image inputs, and only the hosted `web_search` tool. Include the complete web-search source list, validate every cited evidence ID/URL against supplied or returned sources, and never expose GitHub, database, filesystem, provider-management, or cluster tools to the model. One primary decision call handles splitting and dispositions; a second call is reserved for risk triggers such as new-Issue creation, security/privacy content, low confidence, conflicting active matches, or materially mixed feedback.
+**Decision**: Define one provider-neutral `DecisionModel` boundary with Ollama Cloud and ChatGPT/Codex adapters. Ollama uses fixed Cloud chat/search endpoints, JSON-only output, deterministic JSON Schema validation, and at most one bounded repair. Codex uses managed ChatGPT device authorization, model discovery, an empty ephemeral home/workspace, read-only sandboxing, disabled shell/skills/apps/connectors/MCP/project rules, hosted web search, and schema-constrained final output. Both adapters receive the same bounded redacted evidence packet and optional normalized screenshots. Include captured source URLs, validate every cited evidence ID/URL, and never expose GitHub, database, provider-management, or cluster authority to either model. One primary decision call handles splitting and dispositions; a second call is reserved for risk triggers such as new-Issue creation, security/privacy content, low confidence, conflicting active matches, or materially mixed feedback.
 
-**Rationale**: OpenAI's structured-output documentation supports strict JSON schemas, and its web-search documentation exposes the full consulted-source list. This keeps model work focused on judgment while deterministic application code owns authority and cost controls. [OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs), [OpenAI Web Search](https://developers.openai.com/api/docs/guides/tools-web-search)
+**Rationale**: Both user-approved connection choices preserve the same deterministic authority ceiling. Ollama documents fixed Cloud search/chat APIs but no Cloud structured-output enforcement; Codex documents device-code authorization, model discovery, hosted search, and schema-constrained non-interactive execution. PointView therefore owns validation, repair ceilings, credential handling, and mutation control. [Ollama web search](https://docs.ollama.com/capabilities/web-search), [Ollama structured outputs](https://docs.ollama.com/capabilities/structured-outputs), [Codex app-server](https://developers.openai.com/codex/app-server), [Codex non-interactive mode](https://developers.openai.com/codex/noninteractive)
 
 **Alternatives considered**:
 
-- Codex App Server with shell tools: rejected for this service boundary because untrusted feedback would be placed too close to a process capable of reading local files; the product needs research judgment, not autonomous source mutation.
+- Codex with its normal developer workspace and tools: rejected. The selected Codex integration must run in an empty ephemeral workspace with shell and other non-search tools disabled, then fail closed if a forbidden tool event is observed.
 - Give the model GitHub mutation functions: rejected because authorization, idempotency, drift detection, and readback must remain deterministic.
 - Always run two model calls: rejected because it doubles normal-case spend without evidence that every decision benefits.
 

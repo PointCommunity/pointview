@@ -5,18 +5,18 @@
 
 ## Summary
 
-Create PointView as a private Next.js/TypeScript application with PostgreSQL persistence, Cloudflare Access identity, local role authorization, signed source-app launch tokens, sanitized private image storage, deterministic evidence acquisition, a credentialless model decision boundary, and idempotent GitHub App mutations. A Kubernetes CronJob starts daily and the application loop processes the oldest eligible feedback record sequentially until the queue is empty. PointView adopts PointGuide's repository-owned skills, Project fields, gates, and immutable Canary/Production release path, while excluding all knowledge and training features.
+Create PointView as a private Next.js/TypeScript application with PostgreSQL persistence, Cloudflare Access identity, local role authorization, signed source-app launch tokens, sanitized private image storage, deterministic evidence acquisition, encrypted Owner-managed Ollama Cloud and OpenAI Codex connections, a bounded provider-neutral decision boundary, and idempotent GitHub App mutations. A Kubernetes CronJob starts daily and the application loop processes the oldest eligible feedback record sequentially until the queue is empty. PointView adopts PointGuide's repository-owned skills, Project fields, gates, and immutable Canary/Production release path, while excluding all knowledge and training features and the OpenAI Platform API.
 
 ## Technical Context
 
 **Language/Version**: TypeScript 6.0.x on Node.js 22 LTS
-**Primary Dependencies**: Next.js 16.3.x, React 19.2.x, Drizzle ORM 0.45.x, `postgres` 3.4.x, Zod 4.5.x, JOSE 6.2.x, Sharp 0.35.x, OpenAI JavaScript SDK 7.10.x
+**Primary Dependencies**: Next.js 16.3.x, React 19.2.x, Drizzle ORM 0.45.x, `postgres` 3.4.x, Zod 4.5.x, JOSE 6.2.x, Sharp 0.35.x, pinned OpenAI Codex SDK/runtime 0.153.x
 **Storage**: PostgreSQL 17 for application state/audit; private CephFS RWX PVC for normalized screenshot bytes; 1Password-backed Kubernetes Secrets for credentials
 **Testing**: Vitest 5 unit/integration/contract tests with 80% core line coverage; Playwright 1.63 browser tests; axe accessibility assertions; migration rehearsal; container/GitOps validation
 **Target Platform**: Homelab Kubernetes, `linux/amd64`, Cloudflare Access, Zot registry, Gitea-backed Argo CD GitOps
 **Project Type**: Single Next.js web application plus internal CLI entrypoints and a small TypeScript launch SDK workspace
 **Performance Goals**: p95 authenticated page/API response under 500 ms excluding upload/model/GitHub calls; feedback acknowledgement under 2 seconds after image normalization; no model call for an empty queue; reuse one repository/Project snapshot per source app per batch; strictly one leased feedback record at a time
-**Constraints**: Daily oldest-first drain until empty; no concurrent triage; raw content private and deleted 180 days after terminal triage; model has no credentials or mutation tools; all GitHub writes preconditioned, idempotent, and read back; triage never advances development state
+**Constraints**: Daily oldest-first drain until empty; no concurrent triage; raw content private and deleted 180 days after terminal triage; no OpenAI Platform API; provider credentials encrypted and isolated from model-visible context; no model mutation tools; all GitHub writes preconditioned, idempotent, and read back; triage never advances development state
 **Scale/Scope**: Initial private church/product portfolio deployment, designed for tens of registered apps, thousands of submissions per year, up to 20,000 text characters and five 10 MiB images per submission; horizontal web scaling is allowed but triage remains singleton
 
 ## Constitution Check
@@ -68,7 +68,10 @@ Pass. The data model enforces singleton lease and terminal-disposition invariant
 
 - Deterministic GitHub/repository collectors build a versioned evidence manifest covering the Project schema, every non-Done Project Issue, Done history, open PRs, and relevant code/docs/tests/history.
 - Retrieval ranks candidates locally and records the complete eligible-ID manifest. Bounded, sanitized excerpts and normalized screenshots form the model packet.
-- The OpenAI Responses adapter uses strict structured output, `store: false`, hosted web search, explicit primary-source guidance, source-list capture, timeouts, usage accounting, and no mutation function.
+- Ollama Cloud uses authenticated model and capability discovery plus bounded non-streaming chat. Because Cloud does not currently support structured output, PointView requests JSON in the prompt without sending the unsupported `format` field, validates the exact contract, and applies one bounded repair attempt before failing the record safely.
+- OpenAI Codex uses its official app-server device-code login and authenticated model discovery. Scheduled decisions use the pinned non-interactive runtime with schema-constrained output, a disposable empty read-only workspace, no inherited application secrets, no MCP/rules, and ephemeral thread state.
+- Provider credentials are AES-256-GCM ciphertext bound to provider/connection/version under a deployment-injected key. OAuth tokens and API keys never reach the browser, logs, audit metadata, model context, or GitHub.
+- The Owner settings page exposes connection cards, health, refresh/disconnect actions, a provider-grouped model picker, pause, and retention. Governed prompt/schema/retrieval/token/timeout defaults remain versioned but are not standard form fields.
 - Schema, evidence-reference, routing, privacy, Issue-eligibility, label/field, and risk-review validators must all pass before a decision is actionable.
 
 ### 6. GitHub application boundary
@@ -229,7 +232,7 @@ specs/001-feedback-triage-platform/
 
 1. **Governed foundation**: repository/Project bootstrap, adopted skills/policy/audits, CI, app skeleton, configuration, database/migrations, auth/roles, audit ledger.
 2. **Trusted intake MVP**: source registration, launch SDK/JWS verification, feedback UI/API, safe attachment pipeline, own-record status, withdrawal.
-3. **Sequential triage engine**: CronJob command, batch/lease state machine, recovery, deterministic evidence collection, candidate screening, OpenAI structured-decision adapter, validation and risk review.
+3. **Sequential triage engine**: CronJob command, batch/lease state machine, recovery, deterministic evidence collection, candidate screening, Ollama Cloud and OpenAI Codex decision adapters, validation and risk review.
 4. **GitHub outcomes**: least-privilege GitHub App adapter, merge/create/consider operations, Project field application, markers, rate-limit behavior, readback proof.
 5. **Operations and retention**: dashboards, Needs Attention recovery, settings, retention deletion, health/readiness, metrics, alerting.
 6. **Release hardening**: complete security/accessibility/browser/load/failure tests, dark-mode HTML documentation, exact-image build, isolated Canary deployment and live validation.

@@ -1,10 +1,14 @@
 .git
 .github
 .next
+.agent-artifacts
 node_modules
 coverage
 playwright-report
 test-results
+tests
+e2e
 .env*
 *.log
 .DS_Store
+tsconfig.tsbuildinfo
