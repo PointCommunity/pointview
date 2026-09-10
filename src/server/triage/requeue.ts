@@ -29,13 +29,25 @@ export async function requeueFeedback(sql: postgres.Sql, options: { actor: Reque
     if (resumable.count === 0) {
       await tx`update triage_decisions set active = false where active and unit_id in (select id from feedback_units where feedback_record_id = ${record.id})`;
     }
-    await tx`update feedback_records set state = 'QUEUED' where id = ${record.id}`;
+    const [requeued] = await tx<{ requeueGeneration: number }[]>`
+      update feedback_records
+      set state = 'QUEUED', requeue_generation = requeue_generation + 1
+      where id = ${record.id}
+      returning requeue_generation as "requeueGeneration"
+    `;
     await tx`insert into feedback_annotations (id, feedback_record_id, author_account_id, kind, body) values (${newId()}, ${record.id}, ${options.actor.accountId}, 'REQUEUE', ${parsed.data})`;
     await appendAuditEventInTransaction(tx, {
       id: newId(), eventAt: new Date().toISOString(), actorType: "ACCOUNT", actorId: options.actor.accountId,
       action: "feedback.requeued", targetType: "feedback_record", targetId: record.id, result: "SUCCESS",
-      correlationId: options.correlationId, safeMetadata: { sequence: record.sequence, resumedOperation: resumable.count > 0 },
+      correlationId: options.correlationId,
+      safeMetadata: { sequence: record.sequence, resumedOperation: resumable.count > 0, requeueGeneration: requeued.requeueGeneration },
     });
-    return { id: record.id, state: "QUEUED" as const, sequence: record.sequence, resumedOperation: resumable.count > 0 };
+    return {
+      id: record.id,
+      state: "QUEUED" as const,
+      sequence: record.sequence,
+      resumedOperation: resumable.count > 0,
+      requeueGeneration: requeued.requeueGeneration,
+    };
   });
 }

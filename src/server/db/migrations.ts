@@ -6,6 +6,7 @@ import type { Sql } from "postgres";
 const migrations = [
   { version: "0001", digest: "pointview-initial-v1", up: "0001_initial.sql", down: "0001_down.sql" },
   { version: "0002", digest: "pointview-provider-connections-v1", up: "0002_provider_connections.sql", down: "0002_down.sql" },
+  { version: "0003", digest: "pointview-requeue-generations-v1", up: "0003_requeue_generations.sql", down: "0003_down.sql" },
 ] as const;
 
 async function runFile(sql: Pick<Sql, "unsafe">, filePath: string) {

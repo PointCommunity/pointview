@@ -88,6 +88,7 @@ describeDatabase("initial PostgreSQL migration", () => {
     expect(rows).toEqual([
       { version: "0001", digest: "pointview-initial-v1" },
       { version: "0002", digest: "pointview-provider-connections-v1" },
+      { version: "0003", digest: "pointview-requeue-generations-v1" },
     ]);
   });
 });

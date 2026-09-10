@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { newId } from "@/server/db/ids";
 import { migrateDown, migrateUp } from "@/server/db/migrations";
+import { PostgresDrainQueue } from "@/server/triage/postgres-queue";
 import { requeueFeedback } from "@/server/triage/requeue";
 
 const databaseUrl = process.env.DATABASE_TEST_URL;
@@ -55,7 +56,47 @@ describeDatabase("audited feedback requeue", () => {
     await sql`update feedback_records set state = 'NEEDS_ATTENTION' where id = ${feedback}`;
     const batch = newId();
     await sql`insert into triage_batches (id, trigger_kind, scheduled_at, settings_version, runner_identity, state) values (${batch}, 'MANUAL', now(), 1, 'fixture', 'RUNNING')`;
-    await sql`insert into feedback_leases (id, batch_id, feedback_record_id, attempt, idempotency_key, lease_owner, expires_at) values (${newId()}, ${batch}, ${feedback}, 1, ${newId()}, 'fixture', now() + interval '5 minutes')`;
+    const lease = newId();
+    await sql`insert into feedback_leases (id, batch_id, feedback_record_id, attempt, idempotency_key, lease_owner, expires_at) values (${lease}, ${batch}, ${feedback}, 1, ${newId()}, 'fixture', now() + interval '5 minutes')`;
     await expect(requeueFeedback(sql, { actor, feedbackId: feedback, explanation: "Enough corrective context.", correlationId: newId() })).rejects.toThrow(/active lease/i);
+    await sql`update feedback_leases set released_at = now(), result = 'NEEDS_ATTENTION' where id = ${lease}`;
+    await sql`update triage_batches set state = 'COMPLETED', finished_at = now(), stop_reason = 'QUEUE_EMPTY' where id = ${batch}`;
+  });
+
+  it("starts a fresh bounded-attempt cycle after an exhausted record is requeued", async () => {
+    await sql`update feedback_records set state = 'TRIAGED', triage_terminal_at = now() where state = 'QUEUED'`;
+    const feedback = await seed();
+    for (const attempt of [1, 2, 3]) {
+      const batch = newId();
+      await sql`insert into triage_batches (id, trigger_kind, scheduled_at, settings_version, runner_identity, state, finished_at)
+        values (${batch}, 'MANUAL', now(), 1, 'fixture', 'COMPLETED', now())`;
+      await sql`insert into feedback_leases (id, batch_id, feedback_record_id, requeue_generation, attempt, idempotency_key, lease_owner, expires_at, released_at, result)
+        values (${newId()}, ${batch}, ${feedback}, 1, ${attempt}, ${`feedback:${feedback}:generation:1:attempt:${attempt}`}, 'fixture', now() + interval '5 minutes', now(), 'NEEDS_ATTENTION')`;
+    }
+
+    const result = await requeueFeedback(sql, {
+      actor,
+      feedbackId: feedback,
+      explanation: "The model schema was corrected and verified before retrying.",
+      correlationId: newId(),
+    });
+    expect(result).toMatchObject({ state: "QUEUED", requeueGeneration: 2 });
+
+    const queue = new PostgresDrainQueue(sql, "requeue-runner", 1, 60, 3);
+    const batch = await queue.startBatch();
+    expect(batch).toBeTruthy();
+    const lease = await queue.leaseOldest(batch!);
+    expect(lease?.recordId).toBe(feedback);
+    const [persisted] = await sql<{ requeueGeneration: number; attempt: number; idempotencyKey: string }[]>`
+      select requeue_generation as "requeueGeneration", attempt, idempotency_key as "idempotencyKey"
+      from feedback_leases where id = ${lease!.leaseId}
+    `;
+    expect(persisted).toEqual({
+      requeueGeneration: 2,
+      attempt: 1,
+      idempotencyKey: `feedback:${feedback}:generation:2:attempt:1`,
+    });
+    await queue.failLease(lease!.leaseId, lease!.recordId, "FIXTURE_FAILURE");
+    await queue.finishBatch(batch!, "QUEUE_EMPTY", { completed: 0, needsAttention: 1 });
   });
 });

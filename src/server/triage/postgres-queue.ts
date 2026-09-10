@@ -56,13 +56,15 @@ export class PostgresDrainQueue implements DrainQueue {
         select id from feedback_leases where released_at is null and expires_at > now() limit 1
       `;
       if (active) return null;
-      const [record] = await tx<{ id: string }[]>`
-        select id from feedback_records where state = 'QUEUED'
+      const [record] = await tx<{ id: string; requeueGeneration: number }[]>`
+        select id, requeue_generation as "requeueGeneration" from feedback_records where state = 'QUEUED'
         order by sequence asc for update skip locked limit 1
       `;
       if (!record) return null;
       const [{ attempt }] = await tx<{ attempt: number }[]>`
-        select (count(*) + 1)::int as attempt from feedback_leases where feedback_record_id = ${record.id}
+        select (count(*) + 1)::int as attempt
+        from feedback_leases
+        where feedback_record_id = ${record.id} and requeue_generation = ${record.requeueGeneration}
       `;
       if (attempt > this.maxAttempts) {
         await tx`update feedback_records set state = 'NEEDS_ATTENTION' where id = ${record.id}`;
@@ -70,10 +72,10 @@ export class PostgresDrainQueue implements DrainQueue {
       }
       const leaseId = newId();
       await tx`
-        insert into feedback_leases (id, batch_id, feedback_record_id, attempt, idempotency_key, lease_owner, expires_at)
+        insert into feedback_leases (id, batch_id, feedback_record_id, requeue_generation, attempt, idempotency_key, lease_owner, expires_at)
         values (
-          ${leaseId}, ${batchId}, ${record.id}, ${attempt},
-          ${`feedback:${record.id}:attempt:${attempt}`}, ${this.runnerIdentity},
+          ${leaseId}, ${batchId}, ${record.id}, ${record.requeueGeneration}, ${attempt},
+          ${`feedback:${record.id}:generation:${record.requeueGeneration}:attempt:${attempt}`}, ${this.runnerIdentity},
           now() + (${this.leaseSeconds} * interval '1 second')
         )
       `;
