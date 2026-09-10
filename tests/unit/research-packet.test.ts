@@ -56,4 +56,31 @@ describe("bounded research evidence packets", () => {
       limits: { maxRankedIssues: 1, maxFactCharacters: 100, maxPacketBytes: 100 },
     })).toThrow(/byte budget/i);
   });
+
+  it("keeps the highest-priority evidence that fits instead of rejecting a normal oversized repository packet", () => {
+    const repositoryEvidence = Array.from({ length: 20 }, (_, index) => ({
+      id: `ev_repo_${String(index).padStart(2, "0")}`,
+      kind: "REPOSITORY",
+      facts: { path: `src/file-${index}.ts`, excerpt: `${index}:`.padEnd(12_000, "x") },
+    }));
+
+    const packet = buildEvidencePacket({
+      feedback: { id: "feedback-1", text: "Improve the draft list.", context: { route: "/drafts" } },
+      manifest: {
+        digest: "d".repeat(64),
+        totalItemCount: 0,
+        nonDoneIssues: [],
+        doneHistoryIds: [],
+        openPullRequests: [],
+        rankedCandidates: [],
+      },
+      repositoryEvidence,
+      limits: { maxRankedIssues: 10, maxFactCharacters: 12_000, maxPacketBytes: 131_072 },
+    });
+
+    expect(Buffer.byteLength(JSON.stringify(packet), "utf8")).toBeLessThanOrEqual(131_072);
+    expect(packet.evidence[0]?.id).toBe("ev_user_feedback-1");
+    expect(packet.evidence.map((item) => item.id)).toContain("ev_repo_00");
+    expect(packet.evidence.map((item) => item.id)).not.toContain("ev_repo_19");
+  });
 });
