@@ -1,6 +1,7 @@
 export const expectedMigrationState = [
   ["0001", "pointview-initial-v1"],
   ["0002", "pointview-provider-connections-v1"],
+  ["0003", "pointview-requeue-generations-v1"],
 ].map((entry) => entry.join("\t")).join("\n");
 
 export function assertMigrationContract(appliedMigrations) {

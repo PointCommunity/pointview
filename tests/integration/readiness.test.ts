@@ -13,6 +13,19 @@ describeDatabase("aggregate readiness", () => {
   beforeAll(async () => { await migrateDown(sql); await migrateUp(sql); });
   afterAll(async () => { await migrateDown(sql); await sql.end(); });
 
+  it("fails closed when a required runtime migration is missing", async () => {
+    await sql`delete from schema_migrations where version = '0003'`;
+    try {
+      const result = await checkReadiness(sql, {
+        storage: { probe: async () => undefined },
+        github: async () => undefined,
+      });
+      expect(result.checks).toContainEqual({ name: "migrations", ok: false, code: "MIGRATION_MISMATCH" });
+    } finally {
+      await sql`insert into schema_migrations (version, digest) values ('0003', 'pointview-requeue-generations-v1')`;
+    }
+  });
+
   it("reports storage, registry, GitHub, and model/schedule dependencies without model work", async () => {
     const github = vi.fn(async () => undefined);
     const unready = await checkReadiness(sql, { storage: { probe: async () => { throw new Error("unavailable"); } }, github });

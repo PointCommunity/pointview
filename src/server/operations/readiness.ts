@@ -18,9 +18,11 @@ export async function checkReadiness(sql: postgres.Sql, dependencies: ReadinessD
   } catch {
     return { ready: false, checks: [{ name: "database", ok: false, code: "DATABASE_UNAVAILABLE" }] };
   }
-  const migrations = await sql<{ version: string; digest: string }[]>`select version, digest from schema_migrations where version in ('0001', '0002') order by version`;
+  const migrations = await sql<{ version: string; digest: string }[]>`select version, digest from schema_migrations where version in ('0001', '0002', '0003') order by version`;
   const migrationDigests = new Map(migrations.map((migration) => [migration.version, migration.digest]));
-  checks.push(migrationDigests.get("0001") === "pointview-initial-v1" && migrationDigests.get("0002") === "pointview-provider-connections-v1"
+  checks.push(migrationDigests.get("0001") === "pointview-initial-v1"
+    && migrationDigests.get("0002") === "pointview-provider-connections-v1"
+    && migrationDigests.get("0003") === "pointview-requeue-generations-v1"
     ? { name: "migrations", ok: true } : { name: "migrations", ok: false, code: "MIGRATION_MISMATCH" });
   try { await dependencies.storage.probe(); checks.push({ name: "storage", ok: true }); } catch { checks.push({ name: "storage", ok: false, code: "STORAGE_UNAVAILABLE" }); }
   const sources = await sql<Source[]>`

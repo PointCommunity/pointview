@@ -29,7 +29,7 @@ for (const operation of [
   () => assertRuntimeContract({ healthJson, sourceRevision: "a".repeat(40), expectedSourceRevision: "a".repeat(40), uid: "1000" }),
   () => assertStorageContract(claims, [{ metadata: { uid: "postgres-a" } }]),
   () => assertMigrationContract("0001\tpointview-initial-v1"),
-  () => assertMigrationContract(`${expectedMigrationState}\n0003\tunexpected`),
+  () => assertMigrationContract(`${expectedMigrationState}\n0004\tunexpected`),
 ]) {
   try { operation(); } catch { plantedFailures += 1; }
 }
