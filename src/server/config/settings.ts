@@ -133,13 +133,13 @@ export async function readRuntimeProfile(sql: postgres.Sql) {
   const [profile] = await sql<Array<{
     settingsVersion: number; provider: string; modelIdentifier: string; reasoningEffort: string; maxInputTokens: number;
     maxOutputTokens: number; timeoutMs: number; promptVersion: string; promptText: string; schemaVersion: string;
-    schemaDefinition: Record<string, unknown>; profileVersion: number; retrievalLimits: Record<string, number>;
+    schemaDefinitionText: string; profileVersion: number; retrievalLimits: Record<string, number>;
     modelCatalog: unknown;
   }>>`
     select s.version as "settingsVersion", mp.provider, mp.model_identifier as "modelIdentifier",
       mp.reasoning_effort as "reasoningEffort", mp.max_input_tokens as "maxInputTokens",
       mp.max_output_tokens as "maxOutputTokens", mp.timeout_ms as "timeoutMs", mp.prompt_version as "promptVersion",
-      mp.prompt_text as "promptText", mp.schema_version as "schemaVersion", mp.schema_definition as "schemaDefinition",
+      mp.prompt_text as "promptText", mp.schema_version as "schemaVersion", mp.schema_definition::text as "schemaDefinitionText",
       mp.version as "profileVersion", s.retrieval_limits as "retrievalLimits", pc.model_catalog as "modelCatalog"
     from application_settings s
     join model_profiles mp on mp.id = s.model_profile_id and mp.active
@@ -147,8 +147,12 @@ export async function readRuntimeProfile(sql: postgres.Sql) {
     where s.superseded_at is null order by s.version desc limit 1
   `;
   if (!profile) throw new SettingsError("MODEL_PROFILE_UNAVAILABLE", "Connect a model provider and choose a model", 503);
-  const { modelCatalog, ...safeProfile } = profile;
+  const { modelCatalog, schemaDefinitionText, ...safeProfile } = profile;
   const selected = providerCatalog.parse(modelCatalog).find((model) => model.id === profile.modelIdentifier);
   if (!selected) throw new SettingsError("MODEL_NOT_AVAILABLE", "The selected model is no longer available. Choose another model", 503);
-  return { ...safeProfile, supportsImages: selected.inputModalities.includes("image") };
+  const schemaDefinition: unknown = JSON.parse(schemaDefinitionText);
+  if (!schemaDefinition || typeof schemaDefinition !== "object" || Array.isArray(schemaDefinition)) {
+    throw new SettingsError("MODEL_PROFILE_UNAVAILABLE", "The selected model profile is invalid", 503);
+  }
+  return { ...safeProfile, schemaDefinition: schemaDefinition as Record<string, unknown>, supportsImages: selected.inputModalities.includes("image") };
 }
