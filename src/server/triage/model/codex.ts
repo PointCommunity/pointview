@@ -56,6 +56,28 @@ const isolation: CodexIsolation = {
 
 const forbiddenItemTypes = new Set(["command_execution", "file_change", "mcp_tool_call"]);
 
+function schemaScalarType(value: unknown): "string" | "number" | "boolean" | "null" | undefined {
+  if (value === null) return "null";
+  if (typeof value === "string") return "string";
+  if (typeof value === "number") return "number";
+  if (typeof value === "boolean") return "boolean";
+  return undefined;
+}
+
+function codexOutputSchema(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(codexOutputSchema);
+  if (!value || typeof value !== "object") return value;
+  const source = value as Record<string, unknown>;
+  const result = Object.fromEntries(Object.entries(source).map(([key, entry]) => [key, codexOutputSchema(entry)]));
+  if (!("type" in result)) {
+    const constType = "const" in source ? schemaScalarType(source.const) : undefined;
+    const enumTypes = Array.isArray(source.enum) ? [...new Set(source.enum.map(schemaScalarType))] : [];
+    const enumType = enumTypes.length === 1 ? enumTypes[0] : undefined;
+    if (constType || enumType) result.type = constType ?? enumType;
+  }
+  return result;
+}
+
 function citedWebSources(decision: unknown): WebSource[] {
   if (!decision || typeof decision !== "object" || !("units" in decision) || !Array.isArray(decision.units)) return [];
   const byUrl = new Map<string, WebSource>();
@@ -85,7 +107,7 @@ export class CodexDecisionModel implements DecisionModel {
       systemPolicy: request.systemPolicy,
       evidencePacket: request.evidencePacket,
       images: this.profile.supportsImages ? request.images : undefined,
-      outputSchema: this.profile.schema,
+      outputSchema: codexOutputSchema(this.profile.schema) as Record<string, unknown>,
       isolation,
     });
     if (result.items.some((item) => forbiddenItemTypes.has(item.type))) {

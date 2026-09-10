@@ -57,6 +57,37 @@ describe("Codex provider protocol", () => {
 });
 
 describe("Codex decision adapter", () => {
+  it("adds explicit types for const and enum nodes in the provider schema", async () => {
+    const run = vi.fn(async () => ({
+      finalResponse: "{}", usage: null, items: [], refreshedCredential: null,
+    }));
+    const schema = {
+      type: "object",
+      properties: {
+        kind: { const: "MERGE_COMMENT" },
+        disposition: { enum: ["MERGED", "CREATED", "CONSIDERED"] },
+      },
+      required: ["kind", "disposition"],
+      additionalProperties: false,
+    };
+    const model = new CodexDecisionModel({ run }, {
+      credential: "{}", model: "model", reasoningEffort: "low", timeoutMs: 1000,
+      schema, supportsImages: false, onCredentialRefreshed: async () => undefined,
+    });
+
+    await model.decide({ systemPolicy: "policy", evidencePacket: { evidence: [] } });
+
+    expect(run).toHaveBeenCalledWith(expect.objectContaining({
+      outputSchema: expect.objectContaining({
+        properties: {
+          kind: { type: "string", const: "MERGE_COMMENT" },
+          disposition: { type: "string", enum: ["MERGED", "CREATED", "CONSIDERED"] },
+        },
+      }),
+    }));
+    expect(schema.properties.kind).not.toHaveProperty("type");
+  });
+
   it("enforces an isolated ephemeral runtime and parses schema output", async () => {
     const fixture = { schema_version: "1.1.0", record_summary: "Considered", units: [] };
     const run = vi.fn(async () => ({
