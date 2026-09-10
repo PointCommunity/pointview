@@ -28,8 +28,17 @@ const readback = {
 };
 
 describe("source app activation", () => {
-  it("accepts only exact private repository, installation, Project, fields, and labels", () => {
-    expect(validateSourceTarget(registration, readback)).toEqual({ valid: true, errors: [] });
+  it.each([true, false])("accepts an authorized repository with private=%s", (isPrivate) => {
+    expect(validateSourceTarget(registration, { ...readback, repository: { ...readback.repository, private: isPrivate } })).toEqual({ valid: true, errors: [] });
+  });
+
+  it.each([true, false])("rejects identity and installation drift with private=%s", (isPrivate) => {
+    const result = validateSourceTarget(registration, {
+      ...readback,
+      repository: { ...readback.repository, private: isPrivate, name: "wrong", installationId: 99 },
+    });
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual(expect.arrayContaining(["repository identity does not match registration", "GitHub installation does not match"]));
   });
 
   it("fails closed on Project or label drift", () => {

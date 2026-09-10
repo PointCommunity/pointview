@@ -22,9 +22,9 @@ const input = {
   }],
 };
 
-function client(projectId = "PVT_pointguide", extraFields: unknown[] = []) {
+function client(projectId = "PVT_pointguide", extraFields: unknown[] = [], isPrivate = true) {
   return {
-    repositoryJson: async () => ({ name: "pointguide", private: true, owner: { login: "PointCommunity" } }),
+    repositoryJson: async () => ({ name: "pointguide", private: isPrivate, owner: { login: "PointCommunity" } }),
     repositoryInstallationId: async () => 42,
     repositoryPages: async () => input.governedLabels.map((name) => ({ name })),
     projectReadback: async () => ({
@@ -50,6 +50,13 @@ function client(projectId = "PVT_pointguide", extraFields: unknown[] = []) {
 }
 
 describe("live GitHub source target validation", () => {
+  it("validates public repositories and records a readback digest", async () => {
+    await expect(validateGitHubSourceTarget(client("PVT_pointguide", [], false), input)).resolves.toEqual({
+      valid: true,
+      errors: [],
+      digest: expect.stringMatching(/^[0-9a-f]{64}$/),
+    });
+  });
   it("produces a digest only after exact repository, installation, Project, field, and label readback", async () => {
     await expect(validateGitHubSourceTarget(client(), input)).resolves.toEqual({
       valid: true,

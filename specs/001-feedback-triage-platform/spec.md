@@ -12,6 +12,7 @@
 - PointView will be a private `PointCommunity/pointview` repository and use a private organization Project titled `PointView` with PointGuide's Status, Priority, Impact, and Effort fields.
 - PointView will use PointGuide's first-login Owner and later-account Pending model, with User, Admin, and Owner roles; PointGuide's Trainer role and all knowledge/training features are excluded.
 - Registered source apps may target different PointCommunity repositories and Projects. The PointView Project governs PointView's own development, while feedback is routed to the registered source app's repository and Project.
+- Source repositories may be public or private. Repository visibility is evidence, not an activation condition; exact repository identity, GitHub App authorization, Project validation, and governed labels remain required.
 - Source context is asserted by a short-lived signed launch token produced by the source app. Unverified query parameters or referrer headers are never treated as trusted provenance.
 - GitHub receives a privacy-minimized research summary and protected PointView record link, not raw screenshots or unnecessary submitter identity.
 

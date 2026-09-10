@@ -27,7 +27,6 @@ const requiredFields: Record<string, string[]> = {
 
 export function validateSourceTarget(registration: Registration, readback: TargetReadback) {
   const errors: string[] = [];
-  if (!readback.repository.private) errors.push("repository must be private");
   if (readback.repository.owner !== registration.githubOwner || readback.repository.name !== registration.githubRepo) {
     errors.push("repository identity does not match registration");
   }
